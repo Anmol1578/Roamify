@@ -1,43 +1,71 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# ==========================================
+# Roamify · Expo React Native .gitignore
+# ==========================================
 
-# dependencies
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Expo
+# Expo & Metro
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+.metro-health-check*
+metro-cache/
 
-# Native
+# Local Environment Variables & Secrets (per AGENTS.md: NEVER commit secrets)
+.env
+.env.*
+.env*.local
+*.env
+!.env.example
+
+# Native Builds (generated via prebuild/EAS - never edit by hand)
+/ios/
+/android/
 .kotlin/
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
+*.keystore
 *.mobileprovision
+*.signing/
 
-# Metro
-.metro-health-check*
-
-# debug
+# Debug & Logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
+.eslintcache
+.stylelintcache
 
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
+# TypeScript
 *.tsbuildinfo
 
-example
+# Operating System Files
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 
-# generated native folders
-/ios
-/android
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Temporary / Scratch duplicate assets
+images/
