@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from "react";
+import { AlertBanner, Button, OtpInput, ThemedText } from "@/components";
+import { authErrorMessage } from "@/lib/auth/errors";
+import { posthog } from "@/lib/posthog";
+import { colors, spacing } from "@/theme";
+import { useSignIn, useSignUp } from "@clerk/expo";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { ChevronLeft, MailCheck } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
-  View,
-  ScrollView,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams, Redirect } from "expo-router";
-import { useSignUp, useSignIn } from "@clerk/expo";
-import { ChevronLeft, MailCheck } from "lucide-react-native";
-import { colors, spacing } from "@/theme";
-import { ThemedText, Button, OtpInput, AlertBanner } from "@/components";
-import { authErrorMessage } from "@/lib/auth/errors";
 
 export default function VerifyScreen() {
   const router = useRouter();
@@ -33,7 +34,8 @@ export default function VerifyScreen() {
 
   // Validate that an active attempt exists; redirect if accessed invalidly
   const isAttemptValid = isSignInFlow
-    ? signIn.status === "needs_client_trust" || signIn.status === "needs_first_factor"
+    ? signIn.status === "needs_client_trust" ||
+      signIn.status === "needs_first_factor"
     : signUp.status === "missing_requirements" &&
       signUp.unverifiedFields?.includes("email_address");
 
@@ -53,7 +55,9 @@ export default function VerifyScreen() {
   }, [timer]);
 
   if (!isAttemptValid && !submitting) {
-    return <Redirect href={isSignInFlow ? "/(auth)/sign-in" : "/(auth)/sign-up"} />;
+    return (
+      <Redirect href={isSignInFlow ? "/(auth)/sign-in" : "/(auth)/sign-up"} />
+    );
   }
 
   const handleResend = async () => {
@@ -103,12 +107,14 @@ export default function VerifyScreen() {
         if (signIn.status === "complete") {
           setSuccess("Signed in successfully!");
           await signIn.finalize();
+          posthog?.capture("user_signed_in", { auth_method: "email_code" });
           return;
         }
       } else {
-        const { error: verifyError } = await signUp.verifications.verifyEmailCode({
-          code,
-        });
+        const { error: verifyError } =
+          await signUp.verifications.verifyEmailCode({
+            code,
+          });
 
         if (verifyError) {
           setError(authErrorMessage(verifyError));
@@ -118,6 +124,7 @@ export default function VerifyScreen() {
         if (signUp.status === "complete") {
           setSuccess("Account verified successfully! Welcome to Roamify.");
           await signUp.finalize();
+          posthog?.capture("account_created", { auth_method: "email" });
           return;
         }
       }
@@ -184,7 +191,11 @@ export default function VerifyScreen() {
                 justifyContent: "center",
               }}
             >
-              <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.4} />
+              <ChevronLeft
+                size={22}
+                color={colors.textPrimary}
+                strokeWidth={2.4}
+              />
             </Pressable>
 
             <ThemedText

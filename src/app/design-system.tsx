@@ -203,7 +203,7 @@ export default function DesignSystemScreen() {
                 Body (16px / Regular)
               </ThemedText>
               <ThemedText variant="body">
-                From mountain cabins to oceanfront villas, roam helps you find unforgettable stays for every kind of trip.
+                From mountain cabins to oceanfront villas, roamify helps you find unforgettable stays for every kind of trip.
               </ThemedText>
             </View>
 

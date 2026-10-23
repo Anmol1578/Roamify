@@ -1,8 +1,11 @@
-import { ClerkProvider, useAuth } from "@clerk/expo";
+import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import "../../global.css";
-import { useEffect } from "react";
-import { Stack } from "expo-router";
+import { useEffect, useRef } from "react";
+import { Stack, usePathname } from "expo-router";
+import { PostHogProvider, usePostHog } from "posthog-react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { posthog } from "../lib/posthog";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
@@ -22,6 +25,56 @@ if (!publishableKey) {
 }
 
 SplashScreen.preventAutoHideAsync();
+
+function IdentifiedRootNavigator({ fontsReady }: { fontsReady: boolean }) {
+  const posthog = usePostHog();
+  const pathname = usePathname();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const identifiedUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    posthog.screen(pathname);
+  }, [pathname, posthog]);
+
+  useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
+    if (!isSignedIn || !user?.id) {
+      if (identifiedUserId.current) {
+        posthog.reset();
+        identifiedUserId.current = null;
+      }
+      return;
+    }
+
+    if (identifiedUserId.current === user.id) {
+      return;
+    }
+
+    if (identifiedUserId.current) {
+      posthog.reset();
+    }
+
+    const personProperties: Record<string, string> = {};
+    if (user.primaryEmailAddress?.emailAddress) {
+      personProperties.email = user.primaryEmailAddress.emailAddress;
+    }
+    if (user.firstName) {
+      personProperties.first_name = user.firstName;
+    }
+    if (user.lastName) {
+      personProperties.last_name = user.lastName;
+    }
+
+    posthog.identify(user.id, { $set: personProperties });
+    identifiedUserId.current = user.id;
+  }, [isLoaded, isSignedIn, posthog, user]);
+
+  return <RootNavigator fontsReady={fontsReady} />;
+}
 
 function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
   const { isLoaded } = useAuth();
@@ -67,9 +120,17 @@ export default function RootLayout() {
     PlusJakartaSans_800ExtraBold,
   });
 
-  return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <RootNavigator fontsReady={!!loaded || !!error} />
-    </ClerkProvider>
+  const content = (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        {posthog ? (
+          <IdentifiedRootNavigator fontsReady={!!loaded || !!error} />
+        ) : (
+          <RootNavigator fontsReady={!!loaded || !!error} />
+        )}
+      </ClerkProvider>
+    </GestureHandlerRootView>
   );
+
+  return posthog ? <PostHogProvider client={posthog}>{content}</PostHogProvider> : content;
 }

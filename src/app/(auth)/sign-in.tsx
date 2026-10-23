@@ -21,6 +21,7 @@ import {
   AppleIcon,
 } from "@/components";
 import { authErrorMessage } from "@/lib/auth/errors";
+import { posthog } from "@/lib/posthog";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -80,6 +81,7 @@ export default function SignInScreen() {
 
       if (signIn.status === "complete") {
         await signIn.finalize();
+        posthog?.capture("user_signed_in", { auth_method: "password" });
         return;
       }
 

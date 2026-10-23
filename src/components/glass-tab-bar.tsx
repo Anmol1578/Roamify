@@ -1,8 +1,10 @@
 import React from "react";
-import { View, Pressable, ViewStyle, StyleProp } from "react-native";
+import { View, Platform, ViewStyle, StyleProp } from "react-native";
 import { Home, Search, Calendar, User } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import { colors, radius, spacing, shadows } from "@/theme";
 import { ThemedText } from "./themed-text";
+import { PressableScale } from "./ui/pressable-scale";
 
 export type TabId = "home" | "search" | "trips" | "profile";
 
@@ -56,6 +58,13 @@ export function GlassTabBar({
   style,
   className,
 }: GlassTabBarProps) {
+  const handleTabPress = (tabId: TabId) => {
+    if (tabId !== activeTab) {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    onTabPress?.(tabId);
+  };
+
   return (
     <View
       className={className}
@@ -64,14 +73,18 @@ export function GlassTabBar({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-around",
-          backgroundColor: colors.glassBlur,
-          borderWidth: 1,
-          borderColor: "rgba(255, 255, 255, 0.9)",
+          backgroundColor:
+            Platform.OS === "android"
+              ? "rgba(255, 255, 255, 0.95)"
+              : "rgba(255, 255, 255, 0.82)",
+          borderWidth: 1.5,
+          borderColor: "rgba(255, 255, 255, 0.95)",
           borderRadius: radius.full,
           borderCurve: "continuous",
-          paddingVertical: spacing.sm,
-          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.xs + 2,
+          paddingHorizontal: spacing.md,
           boxShadow: shadows.glass,
+          elevation: 8,
         },
         style,
       ]}
@@ -79,63 +92,66 @@ export function GlassTabBar({
       {defaultTabs.map((tab) => {
         const isActive = tab.id === activeTab;
         return (
-          <Pressable
+          <PressableScale
             key={tab.id}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={tab.label}
-            onPress={() => onTabPress?.(tab.id)}
-            style={({ pressed }) => [
-              {
+            onPress={() => handleTabPress(tab.id)}
+            hitSlop={6}
+          >
+            <View
+              style={{
                 alignItems: "center",
                 justifyContent: "center",
-                paddingHorizontal: spacing.md,
+                paddingHorizontal: spacing.sm + 2,
                 paddingVertical: spacing.xs,
-                opacity: pressed ? 0.75 : 1,
-              },
-            ]}
-          >
-            {isActive ? (
-              <View
-                style={{
-                  width: 52,
-                  height: 38,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.primaryYellow,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(255, 198, 41, 0.45)",
-                  marginBottom: 2,
-                }}
-              >
-                {tab.icon(true)}
-              </View>
-            ) : (
-              <View
-                style={{
-                  height: 38,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 2,
-                }}
-              >
-                {tab.icon(false)}
-              </View>
-            )}
-
-            <ThemedText
-              variant="small"
-              color={isActive ? colors.textPrimary : colors.textSecondary}
-              style={{
-                fontFamily: isActive
-                  ? "PlusJakartaSans_700Bold"
-                  : "PlusJakartaSans_500Medium",
-                fontSize: 11,
               }}
             >
-              {tab.label}
-            </ThemedText>
-          </Pressable>
+              {isActive ? (
+                <View
+                  style={{
+                    width: 54,
+                    height: 38,
+                    borderRadius: radius.full,
+                    backgroundColor: colors.primaryYellow,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 12px rgba(255, 198, 41, 0.5)",
+                    elevation: 3,
+                    marginBottom: 2,
+                  }}
+                >
+                  {tab.icon(true)}
+                </View>
+              ) : (
+                <View
+                  style={{
+                    width: 54,
+                    height: 38,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 2,
+                  }}
+                >
+                  {tab.icon(false)}
+                </View>
+              )}
+
+              <ThemedText
+                variant="small"
+                color={isActive ? colors.textPrimary : colors.textSecondary}
+                style={{
+                  fontFamily: isActive
+                    ? "PlusJakartaSans_700Bold"
+                    : "PlusJakartaSans_500Medium",
+                  fontSize: 11,
+                }}
+              >
+                {tab.label}
+              </ThemedText>
+            </View>
+          </PressableScale>
         );
       })}
     </View>

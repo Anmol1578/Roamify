@@ -2,7 +2,7 @@ import React from "react";
 import { View } from "react-native";
 import { ThemedText } from "../themed-text";
 
-// PLACEHOLDER: real roam wordmark asset will go in assets/images/
+// PLACEHOLDER: real roamify wordmark asset will go in assets/images/
 export function Wordmark() {
   return (
     <View>

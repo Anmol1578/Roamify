@@ -1,6 +1,6 @@
-# Roam
+# Roamify
 
-Expo React Native rental app. Guests describe a stay in one sentence ("quiet pet friendly cabin with a hot tub under $300 a night") and get ranked stays back. They can also ask booking and policy questions about a stay, answered with exact text from Roam's own content.
+Expo React Native rental app. Guests describe a stay in one sentence ("quiet pet friendly cabin with a hot tub under $300 a night") and get ranked stays back. They can also ask booking and policy questions about a stay, answered with exact text from Roamify's own content.
 
 This file is the project's memory: it holds every decision that is still true. Plans in `prompts/` are history.
 
@@ -27,15 +27,15 @@ npx eas-cli@latest <cmd>    # EAS builds, submits, and updates (use instead of b
 
 Each tool has one job. Ask before moving a responsibility to a different tool.
 
-- **Auth:** Clerk is the source of truth. Auth screens live in the `(auth)` route group (`sign-up`, `sign-in`, `verify`), using custom Roamify components wired with `@clerk/expo` method-based custom flows, `useSSO` for Google/Apple, and `tokenCache` via `expo-secure-store` for persistent sessions. Protected screens live in `(app)` (`/home`).
-- **Content:** Sanity (properties, hosts, policies, house rules). Studio is a standalone app in `studio/`. Schema deploys and content changes go through the Sanity MCP, and generated property copy uses Agent Actions.
-- **Exact constraints** (price, guests, type, amenities, pets, place): GROQ filters, with values always passed as params.
-- **Soft intent** (quiet, cozy, secluded): Dataset Embeddings via `text::semanticSimilarity()` inside `score()`.
+- **Auth & Navigation:** Clerk is the source of truth. Auth screens live in `(auth)`. Protected screens live in `(app)` as a tab group (Home, Search, Trips, Profile) with `GlassTabBar`. Sign out lives in Profile. Root redirects to `/home` when signed in.
+- **Content:** Sanity dataset `production` holds 30 seeded stays (`property`), 10 shared `host` documents, and 10 shared `policy` documents deployed via Sanity Studio CLI. Stay copy (`summary`, `description`, `highlights`) is written by Sanity Agent Actions from stay facts and checked in two layers (code rules + AI claim audit) to guarantee zero invented claims, stored with `copyReview`. Home reads live stays from the Sanity public CDN API (`src/lib/sanity/`) with category caching. Local fallback/sync lives in `src/data/properties.ts` with matching types.
+- **Exact constraints** (price, guests, type, amenities, pets, place): parsed locally / GROQ filters.
+- **Soft intent** (quiet, cozy, secluded): local vibe ranking / Dataset Embeddings enabled on `production` via `text::semanticSimilarity()` over property copy, facts, vibes, and amenities.
 - **Policy knowledge:** a Sanity Context endpoint in Knowledge Base mode. Context endpoints are created in the Dashboard's Context app and read with an organization token (Context Viewer), per https://www.sanity.io/docs/ai/context-migration-guide. One endpoint serves one mode. The Context skill still describes `sanity.agentContext` Studio documents with a project token; that route is deprecated, so don't use it.
 - **Typed decisions** (which stay topics and policies answer a question): Jev, called from API routes through the AI SDK's `experimental_evaluate` with the `@ai-sdk/typesafe-ai` provider and `TYPESAFE_AI_API_KEY`. No Vercel AI Gateway. Keep `ai` and `@ai-sdk/typesafe-ai` pinned to exact versions, since the API is experimental.
 - **Answer text:** none generated. Answers show the stay's own fields and policy text word for word, with their source. No LLM runs in the app.
 - **Styling:** NativeWind v5 (RC0) with Tailwind CSS v4 and `react-native-css`. Standard React Native components accept `className`. For third-party components that do not pass through `className`, wrap them using `styled()` from `nativewind` (do not use deprecated `cssInterop` or `remapProps`). Root stylesheet and theme imports live in `global.css`.
-- **Design system:** Roam tokens live in `src/theme/` and `global.css`. Geometric Sans typography is Plus Jakarta Sans loaded in `src/app/_layout.tsx`. Primitives live in `src/components/` (`ThemedText`, `Button`, `Input`, `FilterChip`, `Badge`, `ListingCard`, `PolicyCard`, `ProfileRow`, `SegmentedControl`, `Toggle`, `Stepper`, `AlertBanner`, `GlassTabBar`). SVG shapes use `react-native-svg`, with fill from token classes through `styled` `nativeStyleMapping`.
+- **Design system & Motion:** Roamify tokens live in `src/theme/` and `global.css`. Typography is Plus Jakarta Sans. Motion curves live in `src/theme/motion.ts`. Pressables use `PressableScale` (scale 0.97, 120 ms). Tab switches never animate (`animation: 'none'`). Primitives live in `src/components/` (including `SearchListingCard` for compact search results with costing). Layout animations builders live at module scope with `ReduceMotion.System`. Haptics use `expo-haptics` once per user action.
 - **Analytics:** PostHog, identified through Clerk.
 
 ## Rules
@@ -45,10 +45,10 @@ Each tool has one job. Ask before moving a responsibility to a different tool.
 - Jev is not an agent. It answers typed questions (Choice, Noul, Score) with probabilities. It never writes GROQ, calls tools, or generates text. Code builds queries from its answers.
 - Prices, guest counts, and dates are parsed in code. Jev may choose between candidates code found, but never produces the value.
 - Embeddings rank, they don't filter, and they only see the document itself (no references). Hard constraints are always GROQ filters, and text that should affect ranking lives on the property document.
-- Policy answers show only text from the stay's data and Roam's policies, word for word. If nothing answers the question, say so and point to support.
+- Policy answers show only text from the stay's data and Roamify's policies, word for word. If nothing answers the question, say so and point to support.
 - API routes verify the Clerk session before doing any work.
 - PostHog failures never block the app. Never send what guests type, tokens, or personal data in events.
-- Let Sanity generate document IDs. Model relationships as references.
+- Model relationships as references. Seed content uses deterministic IDs (`property-<slug>`, `host-<slug>`, `policy-<slug>`) for repeatable idempotency; let Sanity generate document IDs for user-created content.
 - Ask before adding a dependency or service, changing the Sanity schema once content exists, or deleting data. Prefer Expo modules over third-party libraries.
 - Whenever you need input from the user, ask through your tool's built-in question panel so they pick from options instead of typing. Give two to four clear options with the recommended one first. Fall back to plain text only if no such panel exists.
 

@@ -32,6 +32,14 @@ export const type = {
     color: colors.textPrimary,
     letterSpacing: -1.5,
   },
+  jumbo: {
+    fontSize: 52,
+    lineHeight: 48,
+    fontFamily: fontFamilies.extrabold,
+    fontWeight: "800",
+    color: colors.textPrimary,
+    letterSpacing: -2,
+  },
   lead: {
     fontSize: 17,
     lineHeight: 22,

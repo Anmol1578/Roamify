@@ -104,7 +104,7 @@ export default function OnboardingScreen() {
           alignItems: "center",
         }}
       >
-        {/* roam Wordmark placeholder */}
+        {/* roamify Wordmark placeholder */}
         <Wordmark />
 
         {/* Skip Pill */}
