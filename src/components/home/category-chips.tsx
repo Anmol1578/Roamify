@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleProp, ViewStyle } from "react-native";
 import { Home, TreePine, Waves, Building2, Palmtree } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { PropertyType } from "@/data/properties";
+import { PropertyType } from "@/lib/stays";
 import { colors, radius, spacing } from "@/theme";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";

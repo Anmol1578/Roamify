@@ -3,7 +3,7 @@ import { View, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import { MapPin, Star, ChevronRight } from "lucide-react-native";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
-import { Property } from "@/data/properties";
+import { Property } from "@/lib/stays";
 import { colors, radius } from "@/theme";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";

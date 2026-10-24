@@ -1,10 +1,11 @@
-import { PropertyType } from "../../data/properties";
+import { PropertyType } from "../stays";
 
 export interface ParsedQuery {
   raw: string;
   maxPrice?: number;
   guests?: number;
   type?: PropertyType;
+  place?: string;
   amenities: string[];
   pets?: boolean;
   terms: string[];
@@ -23,6 +24,7 @@ const KNOWN_AMENITIES = [
   "mountain view",
   "skyline view",
   "bay view",
+  "lake view",
   "wifi",
   "kitchen",
   "workspace",
@@ -48,6 +50,28 @@ const KNOWN_TYPES: Record<string, PropertyType> = {
   apartment: "city",
   penthouse: "city",
   studio: "city",
+};
+
+const KNOWN_PLACES: Record<string, string> = {
+  "lake tahoe": "Lake Tahoe",
+  tahoe: "Lake Tahoe",
+  "big bear": "Big Bear Lake",
+  "big bear lake": "Big Bear Lake",
+  "joshua tree": "Joshua Tree",
+  malibu: "Malibu",
+  "laguna beach": "Laguna Beach",
+  "palm springs": "Palm Springs",
+  napa: "Napa",
+  "napa valley": "Napa",
+  "san francisco": "San Francisco",
+  "los angeles": "Los Angeles",
+  "san diego": "San Diego",
+  "santa barbara": "Santa Barbara",
+  sonoma: "Sonoma",
+  "monte rio": "Monte Rio",
+  "lake arrowhead": "Lake Arrowhead",
+  california: "California",
+  ca: "California",
 };
 
 const STOP_WORDS = new Set([
@@ -125,7 +149,19 @@ export function parseQuery(rawText: string): ParsedQuery {
     }
   }
 
-  // 5. Amenities
+  // 5. Places (e.g. "in Lake Tahoe", "near Big Bear", "in California")
+  let place: string | undefined;
+  for (const [token, mappedPlace] of Object.entries(KNOWN_PLACES)) {
+    const placeRegex = new RegExp(`(?:\\b(?:in|near|around)\\s+)?\\b${token}\\b`, "i");
+    if (placeRegex.test(working)) {
+      place = mappedPlace;
+      appliedFilters.push(mappedPlace);
+      working = working.replace(placeRegex, " ");
+      break;
+    }
+  }
+
+  // 6. Amenities
   const foundAmenities: string[] = [];
   for (const amenity of KNOWN_AMENITIES) {
     const pattern = amenity.replace(/\s+/g, "[ -]");
@@ -142,17 +178,18 @@ export function parseQuery(rawText: string): ParsedQuery {
     }
   }
 
-  // 6. Remaining words -> soft terms (e.g. "quiet", "cozy", "secluded", "scenic")
+  // 7. Remaining words -> soft terms (e.g. "quiet", "cozy", "secluded", "scenic")
   const rawWords = working
     .replace(/[^\w\s]/g, " ")
     .split(/\s+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 
   return {
     raw: rawText,
     maxPrice,
     guests,
     type: propertyType,
+    place,
     amenities: foundAmenities,
     pets,
     terms: rawWords,

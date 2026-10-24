@@ -379,19 +379,18 @@ export default function HomeScreen() {
                   exiting={CARD_EXIT}
                   layout={CARD_LAYOUT}
                 >
-                  <PropertyCard
-                    property={stay}
-                    onPress={() => {
-                      posthog?.capture("listing_selected", {
-                        listing_id: stay.id,
-                        source: "home",
-                      });
-                      router.navigate({
-                        pathname: "/search",
-                        params: { q: stay.title },
-                      });
-                    }}
-                  />
+                    <PropertyCard
+                      property={stay}
+                      onPress={() => {
+                        const slug = stay.slug || stay.id;
+                        posthog?.capture("listing_selected", {
+                          listing_id: stay.id,
+                          slug,
+                          source: "home",
+                        });
+                        router.push(`/stay/${slug}` as any);
+                      }}
+                    />
                 </Animated.View>
               ))}
             </View>

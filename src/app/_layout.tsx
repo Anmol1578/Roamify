@@ -101,6 +101,19 @@ function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(app)" />
       <Stack.Screen
+        name="stay/[slug]/index"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="stay/[slug]/ask"
+        options={{
+          headerShown: false,
+          presentation: "modal",
+        }}
+      />
+      <Stack.Screen
         name="design-system"
         options={{
           headerShown: true,

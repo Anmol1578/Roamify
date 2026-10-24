@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, StyleProp, ViewStyle, Pressable } from "react-native";
 import { Image } from "expo-image";
 import {
@@ -11,11 +11,11 @@ import {
   Wifi,
   Flame,
 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
-import { Property } from "@/data/properties";
+import { Property } from "@/lib/stays";
 import { colors, radius } from "@/theme";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";
+import { useFavorites } from "@/lib/favorites";
 
 export interface SearchListingCardProps {
   property: Property;
@@ -30,11 +30,12 @@ export function SearchListingCard({
   style,
   className,
 }: SearchListingCardProps) {
-  const [favorite, setFavorite] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const stayId = property.slug || property.id;
+  const favorite = isFavorite(stayId);
 
   const handleToggleFavorite = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setFavorite(!favorite);
+    toggleFavorite(stayId);
   };
 
   // Determine top 2 amenities with badges matching screenshots

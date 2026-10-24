@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Property, properties as fallbackProperties } from '@/data/properties'
+import { Property } from '@/lib/stays'
 import { CategoryFilter } from '@/components/home/category-chips'
 import { sanityQuery } from '@/lib/sanity/fetch'
 import { HOME_STAYS_QUERY } from '@/lib/sanity/queries'
@@ -36,14 +36,8 @@ export function useHomeStays(category: CategoryFilter): UseHomeStaysResult {
     if (cached) {
       return cached
     }
-    // Fallback if network had failed previously
-    if (isError) {
-      return category === 'all'
-        ? fallbackProperties
-        : fallbackProperties.filter((p) => p.type === category)
-    }
     return []
-  }, [category, cached, liveData, isError])
+  }, [category, cached, liveData])
 
   useEffect(() => {
     let isMounted = true

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   View,
   ScrollView,
@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   SlidersHorizontal,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -20,8 +21,8 @@ import Animated, {
   ReduceMotion,
 } from "react-native-reanimated";
 import { colors, radius } from "@/theme";
-import { searchProperties, SortOption } from "@/lib/search/search";
-import { parseQuery, ParsedQuery } from "@/lib/search/parse";
+import { SortOption } from "@/lib/search/query";
+import { useSearchStays } from "@/hooks/use-search-stays";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";
 import { SearchListingCard } from "@/components/stays/search-listing-card";
@@ -68,6 +69,13 @@ export default function SearchScreen() {
     setQueryText(paramQuery);
     setActiveQuery(paramQuery);
   }
+
+  // Live Sanity search hook
+  const { stays, isLoading, isError, error, parsed, refetch } = useSearchStays(
+    activeQuery,
+    activeFilterChips,
+    sortOption
+  );
 
   const handleQuerySubmit = () => {
     Keyboard.dismiss();
@@ -126,46 +134,6 @@ export default function SearchScreen() {
     router.setParams({ q: "" });
   };
 
-  // Run search with combined query and active filter chips
-  const { results, parsed } = useMemo(() => {
-    const baseParsed: ParsedQuery = parseQuery(activeQuery);
-
-    // Merge manual filter chips into parsed query
-    if (activeFilterChips.has("cabin")) baseParsed.type = "cabin";
-    if (activeFilterChips.has("beach")) baseParsed.type = "beach";
-    if (activeFilterChips.has("villa")) baseParsed.type = "villa";
-    if (activeFilterChips.has("city")) baseParsed.type = "city";
-
-    if (activeFilterChips.has("under-300")) {
-      baseParsed.maxPrice = 300;
-      if (!baseParsed.appliedFilters.includes("Under $300")) {
-        baseParsed.appliedFilters.push("Under $300");
-      }
-    }
-
-    if (activeFilterChips.has("pet-friendly")) {
-      baseParsed.pets = true;
-      if (!baseParsed.appliedFilters.includes("Pet friendly")) {
-        baseParsed.appliedFilters.push("Pet friendly");
-      }
-    }
-
-    if (activeFilterChips.has("hot-tub")) {
-      if (!baseParsed.amenities.includes("hot-tub") && !baseParsed.amenities.includes("hot tub")) {
-        baseParsed.amenities.push("hot tub");
-      }
-    }
-
-    if (activeFilterChips.has("pool")) {
-      if (!baseParsed.amenities.includes("pool")) {
-        baseParsed.amenities.push("pool");
-      }
-    }
-
-    return searchProperties(baseParsed, undefined, sortOption);
-  }, [activeQuery, activeFilterChips, sortOption]);
-
-  // Determine which chips should appear active based on parsed query or manual toggle
   const isChipActive = (chipId: string) => {
     if (activeFilterChips.has(chipId)) return true;
     if (chipId === "cabin" && parsed.type === "cabin") return true;
@@ -204,25 +172,22 @@ export default function SearchScreen() {
           {/* Circular Back Button */}
           <PressableScale
             onPress={handleBackPress}
-            hitSlop={8}
+            scale={0.92}
             accessibilityRole="button"
             accessibilityLabel="Go back"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: "#F3EFFE",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: "#F4F5F7",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.4} />
-            </View>
+            <ChevronLeft size={20} color={colors.textPrimary} strokeWidth={2.4} />
           </PressableScale>
 
-          {/* Search Input Bar with Filter Sliders Icon */}
+          {/* Search Input Pill */}
           <View
             style={{
               flex: 1,
@@ -231,22 +196,20 @@ export default function SearchScreen() {
               backgroundColor: "#F3EFFE",
               flexDirection: "row",
               alignItems: "center",
-              paddingHorizontal: 14,
+              paddingHorizontal: 16,
               gap: 10,
             }}
           >
-            <Search size={19} color={colors.textPrimary} strokeWidth={2.2} />
-
+            <Search size={18} color="#6B7280" strokeWidth={2.2} />
             <TextInput
               value={queryText}
               onChangeText={setQueryText}
               onSubmitEditing={handleQuerySubmit}
-              placeholder="Describe your stay"
+              placeholder="Describe your stay..."
               placeholderTextColor="#9CA3AF"
               returnKeyType="search"
-              submitBehavior="blurAndSubmit"
+              clearButtonMode="while-editing"
               autoCapitalize="none"
-              autoCorrect={false}
               style={{
                 flex: 1,
                 fontSize: 15,
@@ -255,117 +218,103 @@ export default function SearchScreen() {
                 paddingVertical: 0,
               }}
             />
-
-            {/* Filter Sliders Button */}
             <Pressable
-              onPress={() => handleToggleChip("under-300")}
+              onPress={handleQuerySubmit}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Filter options"
+              accessibilityLabel="Filter sliders"
             >
-              <SlidersHorizontal size={18} color={colors.textPrimary} strokeWidth={2.2} />
+              <SlidersHorizontal size={18} color="#6B7280" strokeWidth={2.2} />
             </Pressable>
           </View>
         </View>
 
-        {/* Horizontal Filter Chips Row */}
-        <View style={{ marginTop: 14 }}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              gap: 8,
-            }}
-          >
-            {FILTER_CHIPS.map((chip) => {
-              const active = isChipActive(chip.id);
-              return (
-                <Pressable
-                  key={chip.id}
-                  onPress={() => handleToggleChip(chip.id)}
-                  hitSlop={6}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 16,
-                    paddingVertical: 9,
-                    borderRadius: radius.full,
-                    backgroundColor: active ? "#D4C4FC" : "#FFFFFF",
-                    borderWidth: active ? 0 : 1.2,
-                    borderColor: active ? "transparent" : "#E5E7EB",
-                    opacity: pressed ? 0.75 : 1,
-                  })}
+        {/* Filter Chips Horizontal Row */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            gap: 8,
+          }}
+        >
+          {FILTER_CHIPS.map((chip) => {
+            const active = isChipActive(chip.id);
+            return (
+              <PressableScale
+                key={chip.id}
+                onPress={() => handleToggleChip(chip.id)}
+                scale={0.96}
+                accessibilityRole="button"
+                accessibilityLabel={`${chip.label} filter, ${active ? "active" : "inactive"}`}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: radius.full,
+                  backgroundColor: active ? "#D4C4FC" : colors.surfaceWhite,
+                  borderWidth: active ? 0 : 1,
+                  borderColor: active ? "transparent" : "#E5E7EB",
+                }}
+              >
+                <ThemedText
+                  style={{
+                    fontSize: 13.5,
+                    fontFamily: active
+                      ? "PlusJakartaSans_600SemiBold"
+                      : "PlusJakartaSans_500Medium",
+                    fontWeight: active ? "600" : "500",
+                    color: active ? "#0B0B1A" : "#374151",
+                  }}
                 >
-                  <ThemedText
-                    style={{
-                      fontSize: 13.5,
-                      lineHeight: 18,
-                      fontFamily: active
-                        ? "PlusJakartaSans_600SemiBold"
-                        : "PlusJakartaSans_500Medium",
-                      fontWeight: active ? "600" : "500",
-                      color: active ? colors.textPrimary : "#374151",
-                    }}
-                  >
-                    {chip.label}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+                  {chip.label}
+                </ThemedText>
+              </PressableScale>
+            );
+          })}
+        </ScrollView>
 
-        {/* Results Count & Sort Dropdown Row */}
+        {/* Sub-header Row: Stays Count & Sort Selector */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingHorizontal: 20,
-            marginTop: 18,
-            marginBottom: 10,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
           }}
         >
-          {/* Stays Count */}
           <ThemedText
             style={{
               fontSize: 16,
-              lineHeight: 22,
               fontFamily: "PlusJakartaSans_700Bold",
               fontWeight: "700",
               color: colors.textPrimary,
             }}
           >
-            {`${results.length} ${results.length === 1 ? "stay" : "stays"}`}
+            {isLoading ? "Searching stays..." : `${stays.length} ${stays.length === 1 ? "stay" : "stays"}`}
           </ThemedText>
 
-          {/* Sort Selector */}
           <PressableScale
             onPress={handleCycleSort}
-            hitSlop={8}
+            scale={0.96}
             accessibilityRole="button"
-            accessibilityLabel={`Sort by ${SORT_LABELS[sortOption]}`}
+            accessibilityLabel={`Sort by: ${SORT_LABELS[sortOption]}`}
           >
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 4,
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                borderRadius: radius.md,
+                backgroundColor: "#F3F4F6",
               }}
             >
               <ThemedText
                 style={{
-                  fontSize: 13.5,
-                  lineHeight: 18,
-                  fontFamily: "PlusJakartaSans_500Medium",
-                  color: colors.textSecondary,
-                }}
-              >
-                {"Sort by "}
-              </ThemedText>
-              <ThemedText
-                style={{
-                  fontSize: 13.5,
-                  lineHeight: 18,
+                  fontSize: 13,
                   fontFamily: "PlusJakartaSans_700Bold",
                   fontWeight: "700",
                   color: colors.textPrimary,
@@ -380,7 +329,122 @@ export default function SearchScreen() {
 
         {/* Results List */}
         <View style={{ paddingHorizontal: 16 }}>
-          {results.length === 0 ? (
+          {isLoading ? (
+            /* Loading Skeleton Placeholders */
+            <View style={{ gap: 12, marginTop: 12 }}>
+              {[1, 2, 3].map((key) => (
+                <View
+                  key={key}
+                  style={{
+                    flexDirection: "row",
+                    gap: 14,
+                    paddingVertical: 8,
+                    width: "100%",
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 130,
+                      height: 130,
+                      borderRadius: radius["2xl"],
+                      backgroundColor: "#F3F4F6",
+                    }}
+                  />
+                  <View style={{ flex: 1, gap: 10, justifyContent: "center" }}>
+                    <View
+                      style={{
+                        width: "80%",
+                        height: 18,
+                        borderRadius: 6,
+                        backgroundColor: "#F3F4F6",
+                      }}
+                    />
+                    <View
+                      style={{
+                        width: "50%",
+                        height: 14,
+                        borderRadius: 6,
+                        backgroundColor: "#F3F4F6",
+                      }}
+                    />
+                    <View
+                      style={{
+                        width: "60%",
+                        height: 18,
+                        borderRadius: 6,
+                        backgroundColor: "#F3F4F6",
+                      }}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : isError ? (
+            /* Error State */
+            <View
+              style={{
+                marginTop: 24,
+                paddingVertical: 40,
+                paddingHorizontal: 20,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#FEF2F2",
+                borderRadius: radius["2xl"],
+                borderWidth: 1,
+                borderColor: "#FCA5A5",
+                gap: 12,
+              }}
+            >
+              <ThemedText
+                style={{
+                  fontSize: 18,
+                  fontFamily: "PlusJakartaSans_700Bold",
+                  fontWeight: "700",
+                  color: "#991B1B",
+                  textAlign: "center",
+                }}
+              >
+                Could not load stays
+              </ThemedText>
+              <ThemedText
+                style={{
+                  fontSize: 13.5,
+                  fontFamily: "PlusJakartaSans_500Medium",
+                  color: "#7F1D1D",
+                  textAlign: "center",
+                }}
+              >
+                {error?.message || "Check your internet connection and try again."}
+              </ThemedText>
+              <PressableScale
+                onPress={refetch}
+                style={{
+                  marginTop: 6,
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: radius.full,
+                  backgroundColor: colors.surfaceWhite,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: "#FCA5A5",
+                }}
+              >
+                <RotateCcw size={16} color="#991B1B" />
+                <ThemedText
+                  style={{
+                    fontSize: 14,
+                    fontFamily: "PlusJakartaSans_700Bold",
+                    fontWeight: "700",
+                    color: "#991B1B",
+                  }}
+                >
+                  Try again
+                </ThemedText>
+              </PressableScale>
+            </View>
+          ) : stays.length === 0 ? (
             /* Empty State */
             <View
               style={{
@@ -448,8 +512,9 @@ export default function SearchScreen() {
           ) : (
             /* Compact Listing Cards with Staggered Entrance */
             <View style={{ gap: 10 }}>
-              {results.map((stay, idx) => {
+              {stays.map((stay, idx) => {
                 const delay = Math.min(idx, 6) * 35;
+                const slug = stay.slug || stay.id;
                 return (
                   <Animated.View
                     key={`${activeQuery}-${sortOption}-${stay.id}`}
@@ -463,8 +528,10 @@ export default function SearchScreen() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                         posthog?.capture("listing_selected", {
                           listing_id: stay.id,
+                          slug,
                           source: "search",
                         });
+                        router.push(`/stay/${slug}` as any);
                       }}
                     />
                   </Animated.View>
