@@ -1,6 +1,17 @@
 import React from "react";
 import { StyleProp, ViewStyle } from "react-native";
 import { SymbolView } from "expo-symbols";
+import {
+  Hand,
+  Globe,
+  WifiOff,
+  AlertTriangle,
+  SearchX,
+  MapPinOff,
+  Search,
+  Calendar,
+  Clock,
+} from "lucide-react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 import type { AndroidSymbol } from "expo-symbols";
 import { colors } from "@/theme/colors";
@@ -91,6 +102,39 @@ export interface IconProps {
   importantForAccessibility?: "no" | "yes" | "auto" | "no-hide-descendants";
 }
 
+function LucideFallback({
+  name,
+  size,
+  color,
+}: {
+  name: IconName;
+  size: number;
+  color: string;
+}) {
+  switch (name) {
+    case "wave":
+      return <Hand size={size} color={color} />;
+    case "globe":
+      return <Globe size={size} color={color} />;
+    case "wifiOff":
+      return <WifiOff size={size} color={color} />;
+    case "warning":
+      return <AlertTriangle size={size} color={color} />;
+    case "searchOff":
+      return <SearchX size={size} color={color} />;
+    case "pinOff":
+      return <MapPinOff size={size} color={color} />;
+    case "search":
+      return <Search size={size} color={color} strokeWidth={2.4} />;
+    case "calendar":
+      return <Calendar size={size} color={color} />;
+    case "clock":
+      return <Clock size={size} color={color} />;
+    default:
+      return null;
+  }
+}
+
 export function Icon({
   name,
   size = 24,
@@ -120,6 +164,7 @@ export function Icon({
       tintColor={tintColor}
       style={style}
       className={className}
+      fallback={<LucideFallback name={name} size={size} color={tintColor} />}
       aria-hidden={ariaHidden}
       accessibilityElementsHidden={accessibilityElementsHidden}
       importantForAccessibility={importantForAccessibility}

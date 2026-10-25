@@ -36,6 +36,10 @@ export function useSearchStays(
   sortOption: SortOption = "best_match"
 ): UseSearchStaysResult {
   const { getToken } = useAuth();
+  const requestRef = useRef(request);
+  useEffect(() => {
+    requestRef.current = request;
+  }, [request]);
 
   const requestKey = useMemo(() => {
     if (!request) return "";
@@ -112,8 +116,9 @@ export function useSearchStays(
             headers["Authorization"] = `Bearer ${token}`;
           }
 
+          const currentReq = requestRef.current;
           const bodyPayload = {
-            ...request,
+            ...currentReq,
             sort: sortOption,
           };
 
@@ -139,7 +144,7 @@ export function useSearchStays(
 
           searchCache.set(requestKey, result);
 
-          if (request && "q" in request && data.intent) {
+          if (currentReq && "q" in currentReq && data.intent) {
             const intentKey = `intent:${JSON.stringify(data.intent)}|sort:${sortOption}`;
             searchCache.set(intentKey, result);
           }
@@ -150,7 +155,7 @@ export function useSearchStays(
           setError(null);
           setIsFetchingState(false);
 
-          const queryText = request && "q" in request ? request.q : data.intent?.text || "";
+          const queryText = currentReq && "q" in currentReq ? currentReq.q : data.intent?.text || "";
           if (result.stays.length === 0) {
             posthog?.capture("search_empty", {
               query: queryText,
@@ -176,17 +181,18 @@ export function useSearchStays(
     return () => {
       cancelled = true;
     };
-  }, [requestKey, request, sortOption, getToken]);
+  }, [requestKey, sortOption, getToken]);
 
   const refresh = useCallback(async () => {
     if (!requestKey) return;
     setRefreshing(true);
     setRefreshError(null);
 
+    const currentReq = requestRef.current;
     const override =
-      lastSuccessfulIntentRef.current && (!request || !("intent" in request))
+      lastSuccessfulIntentRef.current && (!currentReq || !("intent" in currentReq))
         ? { intent: lastSuccessfulIntentRef.current }
-        : request;
+        : currentReq;
 
     try {
       const token = await getToken();
@@ -230,7 +236,7 @@ export function useSearchStays(
       setRefreshing(false);
       setRefreshError(e);
     }
-  }, [requestKey, request, sortOption, getToken]);
+  }, [requestKey, sortOption, getToken]);
 
   const refetch = useCallback(async () => {
     if (!requestKey) return;
@@ -245,8 +251,9 @@ export function useSearchStays(
         headers["Authorization"] = `Bearer ${token}`;
       }
 
+      const currentReq = requestRef.current;
       const bodyPayload = {
-        ...request,
+        ...currentReq,
         sort: sortOption,
       };
 
@@ -280,7 +287,7 @@ export function useSearchStays(
       setError(e);
       setIsFetchingState(false);
     }
-  }, [requestKey, request, sortOption, getToken]);
+  }, [requestKey, sortOption, getToken]);
 
   const clearRefreshError = useCallback(() => {
     setRefreshError(null);

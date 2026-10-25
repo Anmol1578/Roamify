@@ -42,7 +42,9 @@ export function SearchListingCard({
   // Determine top 2 amenities with badges matching screenshots
   const badges: { label: string; icon: React.ReactNode }[] = [];
 
-  const rawAmenities = property.amenities.map((a) => a.toLowerCase().replace(/_/g, "-"));
+  const rawAmenities = (property.amenities || []).map((a) =>
+    a.toLowerCase().replace(/_/g, "-")
+  );
 
   if (rawAmenities.some((a) => a.includes("hot-tub") || a.includes("hot tub"))) {
     badges.push({
@@ -84,12 +86,20 @@ export function SearchListingCard({
 
   const visibleBadges = badges.slice(0, 2);
 
+  const city = property.city || "";
+  const region = property.region || property.regionName || "";
+  const locationText = [city, region].filter(Boolean).join(", ");
+  const ratingValue =
+    typeof property.rating === "number" ? property.rating.toFixed(1) : "4.8";
+  const reviewCountValue =
+    typeof property.reviewCount === "number" ? property.reviewCount : 0;
+
   return (
     <PressableScale
       onPress={onPress}
       scale={0.98}
       accessibilityRole="button"
-      accessibilityLabel={`${property.title}, $${property.pricePerNight} per night in ${property.city}`}
+      accessibilityLabel={`${property.title}, $${property.pricePerNight} per night in ${city || "stay"}`}
       className={className}
       style={[{ width: "100%" }, style]}
     >
@@ -97,16 +107,15 @@ export function SearchListingCard({
         style={{
           flexDirection: "row",
           width: "100%",
-          paddingVertical: 8,
+          paddingVertical: 6,
           gap: 14,
         }}
       >
-        {/* Left: Square Photo min-h-40 self-stretch */}
+        {/* Left: Square Photo fixed dimensions (120x120) */}
         <View
           style={{
-            width: 130,
-            minHeight: 160,
-            alignSelf: "stretch",
+            width: 120,
+            height: 120,
             borderRadius: radius["2xl"],
             overflow: "hidden",
             backgroundColor: colors.surfaceGray,
@@ -121,13 +130,14 @@ export function SearchListingCard({
           />
         </View>
 
-        {/* Right: Content Info with pb-3 */}
+        {/* Right: Content Info */}
         <View
           style={{
             flex: 1,
+            minHeight: 120,
             justifyContent: "space-between",
-            paddingTop: 2,
-            paddingBottom: 12,
+            paddingTop: 1,
+            paddingBottom: 2,
           }}
         >
           {/* Header Row: Title & Heart Favorite */}
@@ -142,8 +152,8 @@ export function SearchListingCard({
             <ThemedText
               numberOfLines={2}
               style={{
-                fontSize: 16.5,
-                lineHeight: 21,
+                fontSize: 16,
+                lineHeight: 20,
                 fontFamily: "PlusJakartaSans_700Bold",
                 fontWeight: "700",
                 color: colors.textPrimary,
@@ -156,50 +166,47 @@ export function SearchListingCard({
             {/* Favorite Heart Button */}
             <Pressable
               onPress={handleToggleFavorite}
-              hitSlop={8}
+              hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Add to favorites"
+              accessibilityLabel={favorite ? "Remove from favorites" : "Add to favorites"}
               style={({ pressed }) => ({
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: "#F7F8FA",
-                alignItems: "center",
-                justifyContent: "center",
+                padding: 4,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
               <Heart
-                size={18}
+                size={20}
                 color={favorite ? "#EF4444" : "#9CA3AF"}
                 fill={favorite ? "#EF4444" : "transparent"}
-                strokeWidth={2}
+                strokeWidth={1.8}
               />
             </Pressable>
           </View>
 
           {/* Location Row */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              marginTop: 2,
-            }}
-          >
-            <MapPin size={13} color="#9CA3AF" />
-            <ThemedText
-              numberOfLines={1}
+          {locationText ? (
+            <View
               style={{
-                fontSize: 13,
-                lineHeight: 17,
-                fontFamily: "PlusJakartaSans_500Medium",
-                color: colors.textSecondary,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                marginTop: 1,
               }}
             >
-              {`${property.city}, ${property.region}`}
-            </ThemedText>
-          </View>
+              <MapPin size={13} color="#9CA3AF" />
+              <ThemedText
+                numberOfLines={1}
+                style={{
+                  fontSize: 13,
+                  lineHeight: 17,
+                  fontFamily: "PlusJakartaSans_500Medium",
+                  color: colors.textSecondary,
+                }}
+              >
+                {locationText}
+              </ThemedText>
+            </View>
+          ) : null}
 
           {/* Rating Row */}
           <View
@@ -207,7 +214,7 @@ export function SearchListingCard({
               flexDirection: "row",
               alignItems: "center",
               gap: 4,
-              marginTop: 2,
+              marginTop: 1,
             }}
           >
             <Star size={14} color="#F59E0B" fill="#F59E0B" />
@@ -220,7 +227,7 @@ export function SearchListingCard({
                 color: colors.textPrimary,
               }}
             >
-              {property.rating.toFixed(1)}
+              {ratingValue}
             </ThemedText>
             <ThemedText
               style={{
@@ -230,7 +237,7 @@ export function SearchListingCard({
                 color: colors.textSecondary,
               }}
             >
-              {`(${property.reviewCount})`}
+              {`(${reviewCountValue})`}
             </ThemedText>
           </View>
 
@@ -242,7 +249,7 @@ export function SearchListingCard({
                 alignItems: "center",
                 flexWrap: "wrap",
                 gap: 6,
-                marginTop: 4,
+                marginTop: 2,
               }}
             >
               {visibleBadges.map((badge, idx) => (
@@ -253,7 +260,7 @@ export function SearchListingCard({
                     alignItems: "center",
                     gap: 4,
                     paddingHorizontal: 8,
-                    paddingVertical: 3.5,
+                    paddingVertical: 3,
                     borderRadius: 8,
                     backgroundColor: "#F4F5F7",
                   }}
@@ -280,13 +287,13 @@ export function SearchListingCard({
             style={{
               flexDirection: "row",
               alignItems: "baseline",
-              marginTop: 6,
+              marginTop: 4,
             }}
           >
             <ThemedText
               style={{
-                fontSize: 19,
-                lineHeight: 23,
+                fontSize: 18,
+                lineHeight: 22,
                 fontFamily: "PlusJakartaSans_800ExtraBold",
                 fontWeight: "800",
                 color: colors.textPrimary,
@@ -296,8 +303,8 @@ export function SearchListingCard({
             </ThemedText>
             <ThemedText
               style={{
-                fontSize: 13.5,
-                lineHeight: 18,
+                fontSize: 13,
+                lineHeight: 17,
                 fontFamily: "PlusJakartaSans_500Medium",
                 color: colors.textSecondary,
               }}
@@ -317,33 +324,32 @@ export function ResultCardSkeleton() {
       style={{
         flexDirection: "row",
         width: "100%",
-        paddingVertical: 8,
+        paddingVertical: 6,
         gap: 14,
       }}
     >
       <Skeleton
         style={{
-          width: 130,
-          minHeight: 160,
-          alignSelf: "stretch",
+          width: 120,
+          height: 120,
           borderRadius: radius["2xl"],
         }}
       />
       <View
         style={{
           flex: 1,
+          minHeight: 120,
           justifyContent: "space-between",
-          paddingTop: 4,
-          paddingBottom: 12,
+          paddingVertical: 2,
         }}
       >
-        <View style={{ gap: 8 }}>
-          <Skeleton style={{ width: "85%", height: 20 }} />
-          <Skeleton style={{ width: "55%", height: 16 }} />
+        <View style={{ gap: 6 }}>
+          <Skeleton style={{ width: "85%", height: 18 }} />
+          <Skeleton style={{ width: "55%", height: 14 }} />
         </View>
-        <View style={{ gap: 8 }}>
+        <View style={{ gap: 6 }}>
           <Skeleton style={{ width: "40%", height: 14 }} />
-          <Skeleton style={{ width: "50%", height: 22 }} />
+          <Skeleton style={{ width: "50%", height: 20 }} />
         </View>
       </View>
     </View>

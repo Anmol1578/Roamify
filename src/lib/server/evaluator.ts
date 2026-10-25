@@ -120,6 +120,8 @@ const evaluationSchema = z.object({
   ),
 });
 
+let quotaExceededCooldownUntil = 0;
+
 export async function readIntent(
   sentence: string,
   placesMap: Record<string, string>
@@ -135,6 +137,13 @@ export async function readIntent(
   // 2. Extract candidate numbers in code
   const numberCandidates = extractNumberCandidates(remaining);
 
+  // If Gemini quota was recently exceeded, skip network call and use code parser immediately
+  if (Date.now() < quotaExceededCooldownUntil) {
+    const parsed = parseQuery(trimmed);
+    if (place) parsed.place = place;
+    return intentFromParsed(parsed);
+  }
+
   const apiKey =
     process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
     process.env.GEMINI_API_KEY ||
@@ -149,7 +158,6 @@ export async function readIntent(
   }
 
   const google = createGoogleGenerativeAI({ apiKey });
-
 
   try {
     const prompt = `You are the decision engine for Roamify, an upscale travel stay discovery platform.
@@ -192,6 +200,8 @@ Instructions:
       output: Output.object({ schema: evaluationSchema }),
       prompt,
       temperature: 0.1,
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(3500),
     });
 
 
@@ -310,7 +320,13 @@ Instructions:
 
     return intent;
   } catch (err: unknown) {
-    console.warn("Gemini structured decision failed, falling back to code parser:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED")) {
+      console.warn("Gemini quota exceeded, setting 60s cooldown and falling back to code parser");
+      quotaExceededCooldownUntil = Date.now() + 60_000;
+    } else {
+      console.warn("Gemini structured decision failed, falling back to code parser:", errMsg);
+    }
     const parsed = parseQuery(trimmed);
     if (place) parsed.place = place;
     return intentFromParsed(parsed);

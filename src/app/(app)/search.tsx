@@ -91,7 +91,9 @@ export default function SearchScreen() {
   }
 
   // If chips were manually edited, send intent directly; otherwise send raw search string
-  const searchRequest: SearchRequest = edited ? { intent: edited } : { q: activeQuery };
+  const searchRequest = useMemo<SearchRequest>(() => {
+    return edited ? { intent: edited } : { q: activeQuery };
+  }, [edited, activeQuery]);
 
   // Live server search hook
   const {
@@ -261,49 +263,56 @@ export default function SearchScreen() {
         </View>
 
         {/* Filter Chips Horizontal Row */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            gap: 8,
-          }}
-        >
-          {FILTER_CHIPS.map((chip) => {
-            const active = hasChip(effectiveIntent, chip.id);
-            return (
-              <PressableScale
-                key={chip.id}
-                onPress={() => handleToggleChip(chip.id)}
-                scale={0.96}
-                accessibilityRole="button"
-                accessibilityLabel={`${chip.label} filter, ${active ? "active" : "inactive"}`}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: radius.full,
-                  backgroundColor: active ? "#D4C4FC" : colors.surfaceWhite,
-                  borderWidth: active ? 0 : 1,
-                  borderColor: active ? "transparent" : "#E5E7EB",
-                }}
-              >
-                <ThemedText
-                  style={{
-                    fontSize: 13.5,
-                    fontFamily: active
-                      ? "PlusJakartaSans_600SemiBold"
-                      : "PlusJakartaSans_500Medium",
-                    fontWeight: active ? "600" : "500",
-                    color: active ? "#0B0B1A" : "#374151",
-                  }}
+        <View style={{ minHeight: 46, marginVertical: 4 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {FILTER_CHIPS.map((chip) => {
+              const active = hasChip(effectiveIntent, chip.id);
+              return (
+                <PressableScale
+                  key={chip.id}
+                  onPress={() => handleToggleChip(chip.id)}
+                  scale={0.96}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${chip.label} filter, ${active ? "active" : "inactive"}`}
                 >
-                  {chip.label}
-                </ThemedText>
-              </PressableScale>
-            );
-          })}
-        </ScrollView>
+                  <View
+                    style={{
+                      height: 38,
+                      paddingHorizontal: 16,
+                      borderRadius: radius.full,
+                      backgroundColor: active ? "#D4C4FC" : colors.surfaceWhite,
+                      borderWidth: active ? 0 : 1,
+                      borderColor: active ? "transparent" : "#E5E7EB",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <ThemedText
+                      style={{
+                        fontSize: 13.5,
+                        fontFamily: active
+                          ? "PlusJakartaSans_600SemiBold"
+                          : "PlusJakartaSans_500Medium",
+                        fontWeight: active ? "600" : "500",
+                        color: active ? "#0B0B1A" : "#374151",
+                      }}
+                    >
+                      {chip.label}
+                    </ThemedText>
+                  </View>
+                </PressableScale>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {/* Can't refresh failure Alert */}
         {refreshError && stays.length > 0 ? (
@@ -518,7 +527,7 @@ export default function SearchScreen() {
             </View>
           ) : (
             /* Compact Listing Cards with Staggered Entrance */
-            <View style={{ gap: 10 }}>
+            <View style={{ gap: 12 }}>
               {stays.map((stay, idx) => {
                 const delay = Math.min(idx, 6) * 35;
                 const slug = stay.slug || stay.id;
