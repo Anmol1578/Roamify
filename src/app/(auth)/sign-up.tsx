@@ -1,26 +1,26 @@
-import React, { useState } from "react";
 import {
-  View,
-  ScrollView,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Link } from "expo-router";
-import * as Linking from "expo-linking";
-import { useSignUp, useSSO } from "@clerk/expo";
-import { ChevronLeft, User, Mail, Lock } from "lucide-react-native";
-import { colors, spacing } from "@/theme";
-import {
-  ThemedText,
-  Button,
-  Input,
   AlertBanner,
-  GoogleIcon,
   AppleIcon,
+  Button,
+  GoogleIcon,
+  Input,
+  ThemedText,
 } from "@/components";
 import { authErrorMessage } from "@/lib/auth/errors";
+import { colors, spacing } from "@/theme";
+import { useSignUp, useSSO } from "@clerk/expo";
+import * as Linking from "expo-linking";
+import { Link, useRouter } from "expo-router";
+import { ChevronLeft, Lock, Mail, User } from "lucide-react-native";
+import { useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -136,7 +136,9 @@ export default function SignUpScreen() {
     setGeneralError(null);
 
     try {
-      const redirectUrl = Linking.createURL("/sso-callback", { scheme: "roamify" });
+      const redirectUrl = Linking.createURL("/sso-callback", {
+        scheme: "roamify",
+      });
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy,
         redirectUrl,
@@ -205,7 +207,11 @@ export default function SignUpScreen() {
                 justifyContent: "center",
               }}
             >
-              <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.4} />
+              <ChevronLeft
+                size={22}
+                color={colors.textPrimary}
+                strokeWidth={2.4}
+              />
             </Pressable>
 
             <ThemedText
@@ -248,8 +254,8 @@ export default function SignUpScreen() {
               marginBottom: spacing["2xl"],
             }}
           >
-            Join roamify to save your stays, get personalized recommendations and
-            access them across all your devices.
+            Join roamify to save your stays, get personalized recommendations
+            and access them across all your devices.
           </ThemedText>
 
           {/* General Error Banner */}
@@ -263,7 +269,7 @@ export default function SignUpScreen() {
           <View style={{ gap: spacing.md, marginBottom: spacing["2xl"] }}>
             <Input
               label="Full name"
-              placeholder="e.g. Adrian Hajdin"
+              placeholder="e.g. Ethan Hunt"
               leftIcon={<User size={20} color={colors.textSecondary} />}
               value={name}
               onChangeText={(text) => {
@@ -276,7 +282,7 @@ export default function SignUpScreen() {
 
             <Input
               label="Email address"
-              placeholder="you@example.com"
+              placeholder="ethanwinters@gmail.com"
               leftIcon={<Mail size={20} color={colors.textSecondary} />}
               value={email}
               onChangeText={(text) => {
@@ -291,7 +297,7 @@ export default function SignUpScreen() {
 
             <Input
               label="Password"
-              placeholder="At least 15 characters"
+              placeholder="At least 8 characters"
               leftIcon={<Lock size={20} color={colors.textSecondary} />}
               isPassword
               value={password}
@@ -324,7 +330,9 @@ export default function SignUpScreen() {
               marginVertical: spacing.xl,
             }}
           >
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }} />
+            <View
+              style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }}
+            />
             <ThemedText
               style={{
                 marginHorizontal: spacing.md,
@@ -335,7 +343,9 @@ export default function SignUpScreen() {
             >
               or
             </ThemedText>
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }} />
+            <View
+              style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }}
+            />
           </View>
 
           {/* Social Auth Buttons */}
