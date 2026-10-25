@@ -15,14 +15,13 @@ expo-env.d.ts
 .metro-health-check*
 metro-cache/
 
-# Local Environment Variables & Secrets (per AGENTS.md: NEVER commit secrets)
+# Secrets & environment variables (keep only .env.example)
 .env
 .env.*
-.env*.local
-*.env
 !.env.example
+*.env
 
-# Native Builds (generated via prebuild/EAS - never edit by hand)
+# Native builds (generated via prebuild/EAS)
 /ios/
 /android/
 .kotlin/
@@ -31,35 +30,47 @@ metro-cache/
 *.p8
 *.p12
 *.key
+*.pem
 *.keystore
 *.mobileprovision
 *.signing/
 
-# Debug & Logs
+# Sanity Studio (keep source only)
+studio/node_modules/
+studio/dist/
+studio/.sanity/
+
+# AI tooling, prompts & agent skills (not for recruiters)
+.agents/
+.agent/
+.claude/
+.cursor/
+skills-lock.json
+AGENTS.md
+CLAUDE.md
+prompts/
+prompt-imgs/
+
+# Logs & caches
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 *.log
 .eslintcache
 .stylelintcache
-
-# TypeScript
 *.tsbuildinfo
 
-# Operating System Files
-# macOS
+# Operating system files
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
-
-# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# IDEs and Editors
+# Editors
 .vscode/
 .idea/
 *.swp
@@ -67,5 +78,5 @@ Desktop.ini
 *.sublime-project
 *.sublime-workspace
 
-# Temporary / Scratch duplicate assets
-images/
+# Scratch files (anchored to root so assets/images is NOT ignored)
+/images/
