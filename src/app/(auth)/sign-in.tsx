@@ -1,27 +1,27 @@
-import React, { useState } from "react";
 import {
-  View,
-  ScrollView,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Link } from "expo-router";
-import * as Linking from "expo-linking";
-import { useSignIn, useSSO } from "@clerk/expo";
-import { ChevronLeft, Mail, Lock } from "lucide-react-native";
-import { colors, spacing } from "@/theme";
-import {
-  ThemedText,
-  Button,
-  Input,
   AlertBanner,
-  GoogleIcon,
   AppleIcon,
+  Button,
+  GoogleIcon,
+  Input,
+  ThemedText,
 } from "@/components";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { posthog } from "@/lib/posthog";
+import { colors, spacing } from "@/theme";
+import { useSignIn, useSSO } from "@clerk/expo";
+import * as Linking from "expo-linking";
+import { Link, useRouter } from "expo-router";
+import { ChevronLeft, Lock, Mail } from "lucide-react-native";
+import { useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -103,7 +103,9 @@ export default function SignInScreen() {
         return;
       }
 
-      setGeneralError("Additional verification required. Please check your account.");
+      setGeneralError(
+        "Additional verification required. Please check your account.",
+      );
     } catch (err: unknown) {
       setGeneralError(authErrorMessage(err));
     } finally {
@@ -116,7 +118,9 @@ export default function SignInScreen() {
     setGeneralError(null);
 
     try {
-      const redirectUrl = Linking.createURL("/sso-callback", { scheme: "roamify" });
+      const redirectUrl = Linking.createURL("/sso-callback", {
+        scheme: "roamify",
+      });
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy,
         redirectUrl,
@@ -145,7 +149,8 @@ export default function SignInScreen() {
     setSubmitting(true);
     try {
       await signIn.create({ identifier: email.trim().toLowerCase() });
-      const { error: resetError } = await signIn.resetPasswordEmailCode.sendCode();
+      const { error: resetError } =
+        await signIn.resetPasswordEmailCode.sendCode();
       if (resetError) {
         setGeneralError(authErrorMessage(resetError));
       } else {
@@ -208,7 +213,11 @@ export default function SignInScreen() {
                 justifyContent: "center",
               }}
             >
-              <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.4} />
+              <ChevronLeft
+                size={22}
+                color={colors.textPrimary}
+                strokeWidth={2.4}
+              />
             </Pressable>
 
             <ThemedText
@@ -273,7 +282,7 @@ export default function SignInScreen() {
           <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
             <Input
               label="Email address"
-              placeholder="you@example.com"
+              placeholder="ethanwinters@gmail.com"
               leftIcon={<Mail size={20} color={colors.textSecondary} />}
               value={email}
               onChangeText={(text) => {
@@ -344,7 +353,9 @@ export default function SignInScreen() {
               marginVertical: spacing.xl,
             }}
           >
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }} />
+            <View
+              style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }}
+            />
             <ThemedText
               style={{
                 marginHorizontal: spacing.md,
@@ -355,7 +366,9 @@ export default function SignInScreen() {
             >
               or
             </ThemedText>
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }} />
+            <View
+              style={{ flex: 1, height: 1, backgroundColor: colors.borderGray }}
+            />
           </View>
 
           {/* Social Auth Buttons */}
