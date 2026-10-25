@@ -1,9 +1,38 @@
-# Sanity Clean Content Studio
+# Roamify · Sanity Studio
 
-Congratulations, you have now installed the Sanity Content Studio, an open-source real-time content editing environment connected to the Sanity backend.
+Content management studio for Roamify stay listings, hosts, and policies.
 
-Now you can do the following things:
+## Schemas
 
-- [Read “getting started” in the docs](https://www.sanity.io/docs/introduction/getting-started?utm_source=readme)
-- [Join the Sanity community](https://www.sanity.io/community/join?utm_source=readme)
-- [Extend and build plugins](https://www.sanity.io/docs/content-studio/extending?utm_source=readme)
+- **Property (`property`)**: Rental listings with location coordinates, pricing, bedrooms/baths, amenities, vibes, host references, policy references, and multi-image galleries.
+- **Host (`host`)**: Verified stay hosts with avatar, superhost status, response time, response rate, languages, and bio.
+- **Policy (`policy`)**: Shared cancellation, house rules, and custom policies structured for the zero-hallucination knowledge base.
+- **Review (`review`)**: Stay reviews and guest ratings.
+
+## Getting Started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start local studio:
+   ```bash
+   npm run dev
+   ```
+
+3. Deploy studio:
+   ```bash
+   npm run deploy
+   ```
+
+## Seeding & Verification
+
+- Seed 30 properties, 10 hosts, and 10 policies:
+  ```bash
+  npx tsx scripts/seed.ts
+  ```
+- Check for duplicate photo URLs across properties:
+  ```bash
+  npx tsx scripts/check-duplicates.ts
+  ```
