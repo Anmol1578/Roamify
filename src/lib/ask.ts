@@ -108,7 +108,18 @@ export const ROAM_POLICIES: Record<string, { title: string; summary: string }> =
     summary:
       "If the stay differs materially from its description or is inaccessible, notify Roamify Support within 24 hours for rebooking or a refund.",
   },
+  houseRules: {
+    title: "Standard House Rules & Quiet Hours",
+    summary:
+      "Quiet hours are strictly enforced between 10:00 PM and 8:00 AM daily. Parties, unauthorized gatherings, and smoking inside the home are strictly prohibited.",
+  },
+  guestConduct: {
+    title: "Guest Conduct & Community Guidelines",
+    summary:
+      "Stays are intended for residential accommodation. Commercial filming, ticketed events, and disruptive gatherings require prior host approval and location agreements.",
+  },
 };
+
 
 export function matchTopics(text: string): TopicKey[] {
   const lower = text.toLowerCase();
@@ -131,10 +142,10 @@ export function answerFor(stay: Property, topics: TopicKey[]): AnswerCard[] {
         key: "no-answer",
         title: "No answer in this stay's details",
         lines: [
-          "Roam's policies and this stay's details don't cover this. Contact Roam support.",
+          "Roamify's policies and this stay's details don't cover this. Contact Roamify support.",
         ],
         iconType: "shield",
-        sourceText: "Roam Support",
+        sourceText: "Roamify Support",
       },
     ];
   }
@@ -173,14 +184,14 @@ export function answerFor(stay: Property, topics: TopicKey[]): AnswerCard[] {
           sourceText: "House rules · this stay",
           link: { label: "See all policies", section: "houseRules" },
         });
-        // 2. Roam policy summary
+        // 2. Roamify policy summary
         cards.push({
           key: `checkin-policy-${cards.length}`,
           title: ROAM_POLICIES.checkIn.title,
           iconType: "clock",
           lines: [ROAM_POLICIES.checkIn.summary],
-          source: { label: "Roam policy", icon: "policy" },
-          sourceText: "Check-in and access · Roam policy",
+          source: { label: "Roamify policy", icon: "policy" },
+          sourceText: "Check-in and access · Roamify policy",
           link: { label: "Read full policy", section: "checkIn" },
         });
         break;
@@ -198,14 +209,14 @@ export function answerFor(stay: Property, topics: TopicKey[]): AnswerCard[] {
           sourceText: "House rules · this stay",
           link: { label: "See all policies", section: "houseRules" },
         });
-        // 2. Roam policy summary
+        // 2. Roamify policy summary
         cards.push({
           key: `pets-policy-${cards.length}`,
           title: ROAM_POLICIES.pets.title,
           iconType: "paw",
           lines: [ROAM_POLICIES.pets.summary],
-          source: { label: "Roam policy", icon: "policy" },
-          sourceText: "Guest conduct and parties · Roam policy",
+          source: { label: "Roamify policy", icon: "policy" },
+          sourceText: "Guest conduct and parties · Roamify policy",
           link: { label: "Read full policy", section: "pets" },
         });
         break;
@@ -231,8 +242,8 @@ export function answerFor(stay: Property, topics: TopicKey[]): AnswerCard[] {
           title: ROAM_POLICIES.payment.title,
           iconType: "card",
           lines: [ROAM_POLICIES.payment.summary],
-          source: { label: "Roam policy", icon: "policy" },
-          sourceText: "Fees & Payment · Roam policy",
+          source: { label: "Roamify policy", icon: "policy" },
+          sourceText: "Fees & Payment · Roamify policy",
           link: { label: "Read full policy", section: "payment" },
         });
         break;
@@ -244,8 +255,8 @@ export function answerFor(stay: Property, topics: TopicKey[]): AnswerCard[] {
           title: ROAM_POLICIES.damage.title,
           iconType: "shield",
           lines: [ROAM_POLICIES.damage.summary],
-          source: { label: "Roam policy", icon: "policy" },
-          sourceText: "Damage protection · Roam policy",
+          source: { label: "Roamify policy", icon: "policy" },
+          sourceText: "Damage protection · Roamify policy",
           link: { label: "Read full policy", section: "damage" },
         });
         break;
@@ -257,8 +268,8 @@ export function answerFor(stay: Property, topics: TopicKey[]): AnswerCard[] {
           title: ROAM_POLICIES.guestRefund.title,
           iconType: "refund",
           lines: [ROAM_POLICIES.guestRefund.summary],
-          source: { label: "Roam policy", icon: "policy" },
-          sourceText: "Refund policy · Roam policy",
+          source: { label: "Roamify policy", icon: "policy" },
+          sourceText: "Refund policy · Roamify policy",
           link: { label: "Read full policy", section: "guestRefund" },
         });
         break;
@@ -272,10 +283,10 @@ export function answerFor(stay: Property, topics: TopicKey[]): AnswerCard[] {
         key: "no-answer",
         title: "No answer in this stay's details",
         lines: [
-          "Roam's policies and this stay's details don't cover this. Contact Roam support.",
+          "Roamify's policies and this stay's details don't cover this. Contact Roamify support.",
         ],
         iconType: "shield",
-        sourceText: "Roam Support",
+        sourceText: "Roamify Support",
       },
     ];
   }

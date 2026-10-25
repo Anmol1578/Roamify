@@ -52,7 +52,7 @@ const KNOWN_TYPES: Record<string, PropertyType> = {
   studio: "city",
 };
 
-const KNOWN_PLACES: Record<string, string> = {
+export const KNOWN_PLACES: Record<string, string> = {
   "lake tahoe": "Lake Tahoe",
   tahoe: "Lake Tahoe",
   "big bear": "Big Bear Lake",
@@ -72,7 +72,29 @@ const KNOWN_PLACES: Record<string, string> = {
   "lake arrowhead": "Lake Arrowhead",
   california: "California",
   ca: "California",
+  lisbon: "Lisbon",
+  portugal: "Portugal",
 };
+
+export function takePlace(
+  text: string,
+  placesMap: Record<string, string> = KNOWN_PLACES
+): { place?: string; remaining: string } {
+  let working = text;
+  let foundPlace: string | undefined;
+
+  for (const [token, mappedPlace] of Object.entries(placesMap)) {
+    const placeRegex = new RegExp(`(?:\\b(?:in|near|around)\\s+)?\\b${token}\\b`, "i");
+    if (placeRegex.test(working)) {
+      foundPlace = mappedPlace;
+      working = working.replace(placeRegex, " ").trim();
+      break;
+    }
+  }
+
+  return { place: foundPlace, remaining: working };
+}
+
 
 const STOP_WORDS = new Set([
   "a", "an", "the", "in", "on", "at", "with", "and", "or", "for", "to", "of",

@@ -3,7 +3,7 @@ import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {policyKinds} from './lists'
 
-// Roam's own policies. Cancellation tiers are referenced by stays; the rest
+// Roamify's own policies. Cancellation tiers are referenced by stays; the rest
 // apply to every stay. Answers quote this text word for word, so it stays
 // plain: paragraphs, small headings and bullet lists.
 export const policy = defineType({

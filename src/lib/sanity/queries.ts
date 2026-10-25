@@ -154,3 +154,58 @@ export const STAY_QUERY = `
     }
   }
 `;
+
+export const PLACES_QUERY = `
+  *[_type == "property" && defined(slug.current)]{
+    "city": coalesce(city, location.city),
+    "region": coalesce(region, location.region),
+    "country": coalesce(country, location.country),
+    "neighborhood": coalesce(neighborhood, location.neighborhood)
+  }
+`;
+
+export const POLICY_TEXT_QUERY = `
+  *[_type == "policy"]{
+    "id": _id,
+    title,
+    "kind": coalesce(kind, category),
+    "category": coalesce(kind, category),
+    summary,
+    "text": coalesce(pt::text(body), content, summary, "")
+  }
+`;
+
+export const ASK_STAY_QUERY = `
+  *[_type == "property" && slug.current == $slug][0]{
+    "id": _id,
+    "slug": slug.current,
+    title,
+    type,
+    "city": coalesce(city, location.city),
+    "region": coalesce(region, location.region),
+    maxGuests,
+    bedrooms,
+    beds,
+    "baths": coalesce(bathrooms, baths),
+    "petsAllowed": coalesce(houseRules.petsAllowed, petsAllowed),
+    amenities,
+    "cancellationPolicy": cancellationPolicy->{
+      "id": _id,
+      title,
+      "kind": coalesce(kind, category),
+      summary,
+      "content": coalesce(content, body[0].children[0].text)
+    },
+    "houseRules": select(
+      defined(houseRules._type) && houseRules._type == "reference" => houseRules->{
+        "id": _id,
+        title,
+        summary,
+        "content": coalesce(content, body[0].children[0].text)
+      },
+      houseRules
+    )
+  }
+`;
+
+

@@ -48,7 +48,7 @@ export function AnswerCardComponent({ card, onLinkPress }: AnswerCardProps) {
   const sourceDisplay =
     card.sourceText ||
     (card.source
-      ? `${card.source.label} · ${card.source.icon === "home" ? "this stay" : "Roam policy"}`
+      ? `${card.source.label} · ${card.source.icon === "home" ? "this stay" : "Roamify policy"}`
       : "");
 
   return (

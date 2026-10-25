@@ -45,6 +45,7 @@ export function AskInput({
       <TextInput
         value={text}
         onChangeText={setText}
+        maxLength={300}
         placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         onSubmitEditing={handleSend}

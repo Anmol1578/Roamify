@@ -39,6 +39,7 @@ import { TopicChips } from "@/components/ask/topic-chips";
 import { AskInput } from "@/components/ask/ask-input";
 import { AnswerCardComponent } from "@/components/ask/answer-card";
 import { posthog } from "@/lib/posthog";
+import { useAsk } from "@/hooks/use-ask";
 
 interface RoamOrGuestMessage {
   id: string;
@@ -52,13 +53,19 @@ interface AnswerMessage {
   cards: AnswerCardData[];
 }
 
-type ChatMessage = RoamOrGuestMessage | AnswerMessage;
+interface PendingMessage {
+  id: string;
+  from: "pending";
+}
+
+type ChatMessage = RoamOrGuestMessage | AnswerMessage | PendingMessage;
 
 export default function AskScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { stay, isLoading, isError, refetch } = useStay(slug);
+  const { ask } = useAsk();
 
   const scrollViewRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -68,7 +75,7 @@ export default function AskScreen() {
     {
       id: "intro-greeting",
       from: "roam",
-      text: "Ask about check-in, pets, house rules, fees and more. Answers come word for word from this stay's details and Roam's verified policies.",
+      text: "Ask about check-in, pets, cancellation and more. Answers quote this stay's details and Roamify's guest policies as written.",
     },
   ]);
 
@@ -92,62 +99,123 @@ export default function AskScreen() {
     router.back();
   };
 
-  const handleSelectTopic = (topic: TopicDefinition) => {
-    if (!stay) return;
+  const handleSelectTopic = async (topic: TopicDefinition) => {
+    if (!stay || !slug) return;
     Haptics.selectionAsync().catch(() => {});
 
-    const cards = answerFor(stay, [topic.key]);
+    const pendingId = `pending-${Date.now()}`;
     const guestMsg: ChatMessage = {
       id: `guest-${Date.now()}`,
       from: "guest",
       text: topic.question,
     };
-    const answerMsg: ChatMessage = {
-      id: `answer-${Date.now() + 1}`,
-      from: "answer",
-      cards,
+    const pendingMsg: ChatMessage = {
+      id: pendingId,
+      from: "pending",
     };
 
-    setMessages((prev) => [...prev, guestMsg, answerMsg]);
+    setMessages((prev) => [...prev, guestMsg, pendingMsg]);
     scrollToBottom();
 
-    posthog?.capture("stay_ask_sent", {
-      slug: stay.slug ?? slug ?? "",
-      from: "chip",
-      topics: [topic.key],
-      answered: cards.length > 0 && cards[0].key !== "no-answer",
-    });
+    try {
+      const response = await ask(slug, topic.question);
+      const answerMsg: ChatMessage = {
+        id: `answer-${Date.now()}`,
+        from: "answer",
+        cards: response.cards,
+      };
+
+      setMessages((prev) => prev.map((m) => (m.id === pendingId ? answerMsg : m)));
+      scrollToBottom();
+
+      posthog?.capture("stay_ask_sent", {
+        slug: stay.slug ?? slug,
+        from: "chip",
+        topics: response.topics,
+        answered: response.cards.length > 0 && response.cards[0].key !== "no-answer",
+        answeredBy: response.answeredBy,
+      });
+    } catch (err) {
+      console.warn("Ask request failed, falling back to local answers:", err);
+      const fallbackCards = answerFor(stay, [topic.key]);
+      const answerMsg: ChatMessage = {
+        id: `answer-${Date.now()}`,
+        from: "answer",
+        cards: fallbackCards,
+      };
+
+      setMessages((prev) => prev.map((m) => (m.id === pendingId ? answerMsg : m)));
+      scrollToBottom();
+
+      posthog?.capture("stay_ask_sent", {
+        slug: stay.slug ?? slug,
+        from: "chip",
+        topics: [topic.key],
+        answered: fallbackCards.length > 0 && fallbackCards[0].key !== "no-answer",
+        answeredBy: "fallback",
+      });
+    }
   };
 
-  const handleSendTyped = (text: string) => {
-    if (!stay) return;
+  const handleSendTyped = async (text: string) => {
+    if (!stay || !slug) return;
     Haptics.selectionAsync().catch(() => {});
 
-    const matchedTopics = matchTopics(text);
-    const cards = answerFor(stay, matchedTopics);
-
+    const pendingId = `pending-${Date.now()}`;
     const guestMsg: ChatMessage = {
       id: `guest-${Date.now()}`,
       from: "guest",
       text,
     };
-    const answerMsg: ChatMessage = {
-      id: `answer-${Date.now() + 1}`,
-      from: "answer",
-      cards,
+    const pendingMsg: ChatMessage = {
+      id: pendingId,
+      from: "pending",
     };
 
-    setMessages((prev) => [...prev, guestMsg, answerMsg]);
+    setMessages((prev) => [...prev, guestMsg, pendingMsg]);
     scrollToBottom();
 
-    // Never send guest typed text in analytics
-    posthog?.capture("stay_ask_sent", {
-      slug: stay.slug ?? slug ?? "",
-      from: "typed",
-      topics: matchedTopics,
-      answered: cards.length > 0 && cards[0].key !== "no-answer",
-    });
+    try {
+      const response = await ask(slug, text);
+      const answerMsg: ChatMessage = {
+        id: `answer-${Date.now()}`,
+        from: "answer",
+        cards: response.cards,
+      };
+
+      setMessages((prev) => prev.map((m) => (m.id === pendingId ? answerMsg : m)));
+      scrollToBottom();
+
+      posthog?.capture("stay_ask_sent", {
+        slug: stay.slug ?? slug,
+        from: "typed",
+        topics: response.topics,
+        answered: response.cards.length > 0 && response.cards[0].key !== "no-answer",
+        answeredBy: response.answeredBy,
+      });
+    } catch (err) {
+      console.warn("Ask request failed, falling back to local matching:", err);
+      const matchedTopics = matchTopics(text);
+      const fallbackCards = answerFor(stay, matchedTopics);
+      const answerMsg: ChatMessage = {
+        id: `answer-${Date.now()}`,
+        from: "answer",
+        cards: fallbackCards,
+      };
+
+      setMessages((prev) => prev.map((m) => (m.id === pendingId ? answerMsg : m)));
+      scrollToBottom();
+
+      posthog?.capture("stay_ask_sent", {
+        slug: stay.slug ?? slug,
+        from: "typed",
+        topics: matchedTopics,
+        answered: fallbackCards.length > 0 && fallbackCards[0].key !== "no-answer",
+        answeredBy: "fallback",
+      });
+    }
   };
+
 
   const handleCardLinkPress = (section?: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -385,6 +453,21 @@ export default function AskScreen() {
                   );
                 }
 
+                if (item.from === "pending") {
+                  return (
+                    <Animated.View
+                      key={item.id}
+                      entering={FadeInDown.duration(150)}
+                      style={{ alignSelf: "flex-start", opacity: 0.85 }}
+                    >
+                      <MessageBubble
+                        from="roam"
+                        text="Checking Roamify's policies…"
+                      />
+                    </Animated.View>
+                  );
+                }
+
                 if (item.from === "answer") {
                   return (
                     <Animated.View
@@ -405,6 +488,7 @@ export default function AskScreen() {
 
                 return null;
               })}
+
             </ScrollView>
 
             {/* Composer */}
@@ -577,7 +661,7 @@ export default function AskScreen() {
               </View>
             )}
 
-            {/* General Roam Policies */}
+            {/* General Roamify Policies */}
             {Object.entries(ROAM_POLICIES).map(([k, p]) => {
               if (selectedSection !== "all" && selectedSection !== k) {
                 return null;

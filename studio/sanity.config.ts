@@ -9,7 +9,7 @@ import { CommentIcon } from '@sanity/icons/Comment'
 
 export default defineConfig({
   name: 'default',
-  title: 'Roam',
+  title: 'Roamify',
 
   projectId: 'ird6lvzh',
   dataset: 'production',
@@ -18,7 +18,7 @@ export default defineConfig({
     structureTool({
       structure: (S) =>
         S.list()
-          .title('Roam')
+          .title('Roamify')
           .items([
             S.documentTypeListItem('property').title('Stays').icon(HomeIcon),
             S.documentTypeListItem('host').title('Hosts').icon(UserIcon),

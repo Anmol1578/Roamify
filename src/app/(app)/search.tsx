@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+
 import {
   View,
   ScrollView,
@@ -22,7 +23,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { colors, radius } from "@/theme";
 import { SortOption } from "@/lib/search/query";
-import { useSearchStays } from "@/hooks/use-search-stays";
+import {
+  SearchIntent,
+  emptyIntent,
+  hasChip,
+  toggleChip,
+  describeIntent,
+} from "@/lib/search/intent";
+import { useSearchStays, SearchRequest } from "@/hooks/use-search-stays";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";
 import { SearchListingCard } from "@/components/stays/search-listing-card";
@@ -60,22 +68,34 @@ export default function SearchScreen() {
   const [queryText, setQueryText] = useState(paramQuery);
   const [prevParamQ, setPrevParamQ] = useState(paramQuery);
   const [activeQuery, setActiveQuery] = useState(paramQuery);
-  const [activeFilterChips, setActiveFilterChips] = useState<Set<string>>(new Set());
+  const [edited, setEdited] = useState<SearchIntent | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>("best_match");
+
 
   // Synchronize during render when route params change
   if (paramQuery !== prevParamQ) {
     setPrevParamQ(paramQuery);
     setQueryText(paramQuery);
     setActiveQuery(paramQuery);
+    setEdited(null);
   }
 
-  // Live Sanity search hook
-  const { stays, isLoading, isError, error, parsed, refetch } = useSearchStays(
-    activeQuery,
-    activeFilterChips,
+  // If chips were manually edited, send intent directly; otherwise send raw search string
+  const searchRequest: SearchRequest = edited ? { intent: edited } : { q: activeQuery };
+
+
+
+  // Live server search hook
+  const { stays, intent: returnedIntent, total, isLoading, isError, error, refetch } = useSearchStays(
+    searchRequest,
     sortOption
   );
+
+  // Active intent represents edited chips over returned server response or empty
+  const effectiveIntent = useMemo<SearchIntent>(() => {
+    return edited ?? (returnedIntent?.text ? returnedIntent : null) ?? emptyIntent(queryText);
+  }, [edited, returnedIntent, queryText]);
+
 
   const handleQuerySubmit = () => {
     Keyboard.dismiss();
@@ -84,6 +104,7 @@ export default function SearchScreen() {
       source: "search",
       query_length: queryText.trim().length,
     });
+    setEdited(null);
     setActiveQuery(queryText);
     router.setParams({ q: queryText });
   };
@@ -99,18 +120,11 @@ export default function SearchScreen() {
 
   const handleToggleChip = (chipId: string) => {
     Haptics.selectionAsync().catch(() => {});
+    const next = toggleChip(effectiveIntent, chipId);
+    setEdited(next);
     posthog?.capture("search_filter_toggled", {
       filter_id: chipId,
-      enabled: !isChipActive(chipId),
-    });
-    setActiveFilterChips((prev) => {
-      const next = new Set(prev);
-      if (next.has(chipId)) {
-        next.delete(chipId);
-      } else {
-        next.add(chipId);
-      }
-      return next;
+      enabled: hasChip(next, chipId),
     });
   };
 
@@ -129,27 +143,14 @@ export default function SearchScreen() {
   const handleResetFilters = () => {
     setQueryText("");
     setActiveQuery("");
-    setActiveFilterChips(new Set());
+    setEdited(null);
     setSortOption("best_match");
     router.setParams({ q: "" });
   };
 
-  const isChipActive = (chipId: string) => {
-    if (activeFilterChips.has(chipId)) return true;
-    if (chipId === "cabin" && parsed.type === "cabin") return true;
-    if (chipId === "beach" && parsed.type === "beach") return true;
-    if (chipId === "villa" && parsed.type === "villa") return true;
-    if (chipId === "city" && parsed.type === "city") return true;
-    if (chipId === "under-300" && parsed.maxPrice !== undefined && parsed.maxPrice <= 300) return true;
-    if (chipId === "pet-friendly" && parsed.pets === true) return true;
-    if (
-      chipId === "hot-tub" &&
-      parsed.amenities.some((a) => a.toLowerCase().includes("hot tub") || a.toLowerCase().includes("hot-tub"))
-    )
-      return true;
-    if (chipId === "pool" && parsed.amenities.some((a) => a.toLowerCase().includes("pool"))) return true;
-    return false;
-  };
+  const { applied: appliedFilters, avoided: avoidedFilters } = useMemo(() => {
+    return describeIntent(effectiveIntent);
+  }, [effectiveIntent]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surfaceWhite }}>
@@ -240,7 +241,7 @@ export default function SearchScreen() {
           }}
         >
           {FILTER_CHIPS.map((chip) => {
-            const active = isChipActive(chip.id);
+            const active = hasChip(effectiveIntent, chip.id);
             return (
               <PressableScale
                 key={chip.id}
@@ -292,7 +293,7 @@ export default function SearchScreen() {
               color: colors.textPrimary,
             }}
           >
-            {isLoading ? "Searching stays..." : `${stays.length} ${stays.length === 1 ? "stay" : "stays"}`}
+            {isLoading ? "Searching stays..." : `${total} ${total === 1 ? "stay" : "stays"}`}
           </ThemedText>
 
           <PressableScale
@@ -473,7 +474,7 @@ export default function SearchScreen() {
                 No stays match your criteria
               </ThemedText>
 
-              {parsed.appliedFilters.length > 0 ? (
+              {appliedFilters.length > 0 ? (
                 <ThemedText
                   style={{
                     fontSize: 13.5,
@@ -483,7 +484,21 @@ export default function SearchScreen() {
                     textAlign: "center",
                   }}
                 >
-                  {`Filters applied: ${parsed.appliedFilters.join(", ")}`}
+                  {`Filters applied: ${appliedFilters.join(", ")}`}
+                </ThemedText>
+              ) : null}
+
+              {avoidedFilters.length > 0 ? (
+                <ThemedText
+                  style={{
+                    fontSize: 13.5,
+                    lineHeight: 19,
+                    fontFamily: "PlusJakartaSans_500Medium",
+                    color: "#B45309",
+                    textAlign: "center",
+                  }}
+                >
+                  {`Excluded: ${avoidedFilters.join(", ")}`}
                 </ThemedText>
               ) : null}
 
@@ -517,7 +532,7 @@ export default function SearchScreen() {
                 const slug = stay.slug || stay.id;
                 return (
                   <Animated.View
-                    key={`${activeQuery}-${sortOption}-${stay.id}`}
+                    key={`${effectiveIntent.text}-${sortOption}-${stay.id}`}
                     entering={FadeInDown.duration(200)
                       .delay(delay)
                       .reduceMotion(ReduceMotion.System)}
