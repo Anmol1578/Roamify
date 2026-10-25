@@ -78,3 +78,14 @@ export function BrandWordmark({
     </View>
   );
 }
+
+export function Wordmark({ color = "#0B0B1A", fontSize = 32 }: { color?: string; fontSize?: number }) {
+  return (
+    <BrandWordmark
+      variant="text"
+      color={color}
+      fontSize={fontSize}
+    />
+  );
+}
+

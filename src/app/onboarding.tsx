@@ -15,12 +15,12 @@ import { Image } from "expo-image";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { ThemedText, Button } from "@/components";
-import { Wordmark } from "@/components/brand/wordmark";
+import { Wordmark } from "@/components/brand-wordmark";
 import { SLIDES } from "@/components/onboarding/slides";
 import { SheetCurve } from "@/components/onboarding/sheet-curve";
 import { LocationPill } from "@/components/onboarding/location-pill";
 import { PageDots } from "@/components/onboarding/page-dots";
-import { GoogleMark } from "@/components/onboarding/google-mark";
+import { GoogleIcon } from "@/components/social-icons";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -221,7 +221,7 @@ export default function OnboardingScreen() {
               variant="secondary"
               size="lg"
               title="Continue with Google"
-              icon={<GoogleMark />}
+              icon={<GoogleIcon size={20} />}
               onPress={handleGoogleAuth}
             />
           </View>
