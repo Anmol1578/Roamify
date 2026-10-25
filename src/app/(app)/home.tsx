@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useUser } from "@clerk/expo";
 import { Image } from "expo-image";
-import { Search, AlertCircle, RefreshCw } from "lucide-react-native";
+import { Search } from "lucide-react-native";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -17,8 +17,17 @@ import { easeInOut } from "@/theme/motion";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";
 import { SearchPrompt } from "@/components/stays/search-prompt";
-import { CategoryChips, CategoryFilter } from "@/components/home/category-chips";
+import {
+  CategoryChips,
+  CategoryFilter,
+  CATEGORY_ICONS,
+} from "@/components/home/category-chips";
 import { PropertyCard } from "@/components/stays/property-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadError } from "@/components/load-error";
+import { Icon } from "@/components/ui/icons";
+import { Alert } from "@/components/alert-banner";
 import { useHomeStays } from "@/hooks/use-home-stays";
 import { posthog } from "@/lib/posthog";
 
@@ -35,39 +44,46 @@ function CardSkeleton() {
         width: "100%",
         height: 272,
         borderRadius: radius["2xl"],
-        backgroundColor: "#EBECEF",
         overflow: "hidden",
         position: "relative",
-        padding: 24,
-        justifyContent: "flex-end",
+        backgroundColor: colors.surfaceWhite,
       }}
     >
+      <Skeleton style={{ width: "100%", height: "100%", borderRadius: radius["2xl"] }} />
       <View
         style={{
-          width: "60%",
-          height: 28,
-          borderRadius: 8,
-          backgroundColor: "#D9DBE0",
-          marginBottom: 10,
+          position: "absolute",
+          bottom: 24,
+          left: 24,
+          right: 24,
+          gap: 10,
         }}
-      />
-      <View
-        style={{
-          width: "40%",
-          height: 18,
-          borderRadius: 6,
-          backgroundColor: "#D9DBE0",
-          marginBottom: 12,
-        }}
-      />
-      <View
-        style={{
-          width: "30%",
-          height: 22,
-          borderRadius: 6,
-          backgroundColor: "#D9DBE0",
-        }}
-      />
+      >
+        <Skeleton
+          style={{
+            width: "60%",
+            height: 28,
+            borderRadius: 8,
+            backgroundColor: "rgba(255, 255, 255, 0.7)",
+          }}
+        />
+        <Skeleton
+          style={{
+            width: "40%",
+            height: 18,
+            borderRadius: 6,
+            backgroundColor: "rgba(255, 255, 255, 0.7)",
+          }}
+        />
+        <Skeleton
+          style={{
+            width: "30%",
+            height: 22,
+            borderRadius: 6,
+            backgroundColor: "rgba(255, 255, 255, 0.7)",
+          }}
+        />
+      </View>
     </View>
   );
 }
@@ -81,9 +97,11 @@ export default function HomeScreen() {
   const {
     stays,
     isLoading,
-    isRefreshing,
+    refreshing,
     isError,
-    refetch,
+    error,
+    refreshError,
+    clearRefreshError,
     refresh,
   } = useHomeStays(selectedCategory);
 
@@ -94,7 +112,7 @@ export default function HomeScreen() {
     metadata?.fullName?.split(" ")[0] ||
     "";
 
-  const greetingText = firstName ? `Hey, ${firstName} 👋` : "Hey there 👋";
+  const greetingAriaLabel = firstName ? `Hey, ${firstName}` : "Hey there";
   const hasCustomAvatar = Boolean(user?.hasImage && user?.imageUrl);
   const userAvatarUrl = user?.imageUrl || "";
   const userInitial = (firstName || "E").charAt(0).toUpperCase();
@@ -119,6 +137,8 @@ export default function HomeScreen() {
     setSelectedCategory(category);
   };
 
+  const CategoryEmptyIcon = CATEGORY_ICONS[selectedCategory] || CATEGORY_ICONS.all;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.surfaceWhite }}>
       <ScrollView
@@ -129,11 +149,7 @@ export default function HomeScreen() {
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refresh}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
         }
       >
         {/* Header Row: Wordmark & Avatar */}
@@ -202,8 +218,17 @@ export default function HomeScreen() {
           </PressableScale>
         </View>
 
-        {/* Greeting: Hey, {firstName} 👋 */}
-        <View style={{ marginTop: 14 }}>
+        {/* Greeting: Hey, {firstName} + wave icon */}
+        <View
+          accessibilityLabel={greetingAriaLabel}
+          accessibilityRole="text"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 14,
+          }}
+        >
           <ThemedText
             style={{
               fontSize: 20,
@@ -213,8 +238,16 @@ export default function HomeScreen() {
               color: colors.textSecondary,
             }}
           >
-            {greetingText}
+            {greetingAriaLabel}
           </ThemedText>
+          <Icon
+            name="wave"
+            size={22}
+            tone="primary"
+            aria-hidden
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
         </View>
 
         {/* Headline Row: "Find your next stay" + Search Button */}
@@ -275,6 +308,17 @@ export default function HomeScreen() {
           />
         </View>
 
+        {/* Can't refresh failure Banner */}
+        {refreshError && stays.length > 0 ? (
+          <View style={{ marginTop: 20 }}>
+            <Alert
+              tone="danger"
+              message="Couldn't refresh. Showing what you had."
+              onDismiss={clearRefreshError}
+            />
+          </View>
+        ) : null}
+
         {/* Content States: Loading, Error, Empty, or List */}
         {isLoading && stays.length === 0 ? (
           <View style={{ marginTop: 26, gap: 20 }}>
@@ -283,91 +327,24 @@ export default function HomeScreen() {
             <CardSkeleton />
           </View>
         ) : isError && stays.length === 0 ? (
-          <View
-            style={{
-              marginTop: 40,
-              padding: 24,
-              borderRadius: radius.xl,
-              backgroundColor: "#FFF8F7",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 12,
-            }}
-          >
-            <AlertCircle size={32} color={colors.statusError.icon} />
-            <ThemedText
-              style={{
-                fontSize: 16,
-                lineHeight: 22,
-                fontFamily: "PlusJakartaSans_600SemiBold",
-                fontWeight: "600",
-                color: colors.textPrimary,
-                textAlign: "center",
-              }}
-            >
-              {"We couldn't load stays right now."}
-            </ThemedText>
-            <ThemedText
-              style={{
-                fontSize: 14,
-                lineHeight: 20,
-                color: colors.textSecondary,
-                textAlign: "center",
-              }}
-            >
-              Check your connection and try again.
-            </ThemedText>
-            <PressableScale
-              onPress={() => refetch()}
-              accessibilityRole="button"
-              accessibilityLabel="Try again"
-              style={{ marginTop: 8 }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  paddingHorizontal: 20,
-                  paddingVertical: 12,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.textPrimary,
-                }}
-              >
-                <RefreshCw size={16} color={colors.surfaceWhite} />
-                <ThemedText
-                  style={{
-                    fontSize: 14,
-                    fontFamily: "PlusJakartaSans_700Bold",
-                    fontWeight: "700",
-                    color: colors.surfaceWhite,
-                  }}
-                >
-                  Try again
-                </ThemedText>
-              </View>
-            </PressableScale>
+          <View style={{ marginTop: 32 }}>
+            <LoadError subject="stays" error={error} onRetry={refresh} />
           </View>
         ) : stays.length === 0 ? (
-          <View
-            style={{
-              marginTop: 48,
-              alignItems: "center",
-              justifyContent: "center",
-              paddingHorizontal: 20,
-            }}
-          >
-            <ThemedText
-              style={{
-                fontSize: 18,
-                fontFamily: "PlusJakartaSans_600SemiBold",
-                fontWeight: "600",
-                color: colors.textSecondary,
-                textAlign: "center",
-              }}
-            >
-              No stays found in this category yet.
-            </ThemedText>
+          <View style={{ marginTop: 32 }}>
+            <EmptyState
+              icon={<CategoryEmptyIcon size={32} color={colors.textSecondary} />}
+              title="No stays here yet"
+              message="Try another category, or describe your stay above."
+              action={
+                selectedCategory !== "all"
+                  ? {
+                      title: "Show all stays",
+                      onPress: () => setSelectedCategory("all"),
+                    }
+                  : undefined
+              }
+            />
           </View>
         ) : (
           <LayoutAnimationConfig skipEntering>
@@ -379,18 +356,18 @@ export default function HomeScreen() {
                   exiting={CARD_EXIT}
                   layout={CARD_LAYOUT}
                 >
-                    <PropertyCard
-                      property={stay}
-                      onPress={() => {
-                        const slug = stay.slug || stay.id;
-                        posthog?.capture("listing_selected", {
-                          listing_id: stay.id,
-                          slug,
-                          source: "home",
-                        });
-                        router.push(`/stay/${slug}` as any);
-                      }}
-                    />
+                  <PropertyCard
+                    property={stay}
+                    onPress={() => {
+                      const slug = stay.slug || stay.id;
+                      posthog?.capture("listing_selected", {
+                        listing_id: stay.id,
+                        slug,
+                        source: "home",
+                      });
+                      router.push(`/stay/${slug}` as any);
+                    }}
+                  />
                 </Animated.View>
               ))}
             </View>

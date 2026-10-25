@@ -1,7 +1,5 @@
-import React from "react";
 import {
   Pressable,
-  ActivityIndicator,
   View,
   ViewStyle,
   StyleProp,
@@ -9,6 +7,7 @@ import {
 import { ArrowRight } from "lucide-react-native";
 import { colors, radius, spacing, shadows } from "@/theme";
 import { ThemedText } from "./themed-text";
+import { Spinner } from "./ui/spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -109,7 +108,7 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={colors.textPrimary} />
+        <Spinner tone="ink" />
       ) : children ? (
         children
       ) : spreadIcons ? (

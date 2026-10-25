@@ -2,12 +2,14 @@ import React from "react";
 import { ViewStyle, StyleProp } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-export interface IconProps {
+export interface SocialIconProps {
   size?: number;
   style?: StyleProp<ViewStyle>;
 }
 
-export function GoogleIcon({ size = 20, style }: IconProps) {
+export type { SocialIconProps as IconProps };
+
+export function GoogleIcon({ size = 20, style }: SocialIconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" style={style}>
       <Path
@@ -30,7 +32,7 @@ export function GoogleIcon({ size = 20, style }: IconProps) {
   );
 }
 
-export function AppleIcon({ size = 20, style }: IconProps) {
+export function AppleIcon({ size = 20, style }: SocialIconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" style={style}>
       <Path

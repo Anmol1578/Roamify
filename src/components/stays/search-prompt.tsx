@@ -6,12 +6,14 @@ import {
   ViewStyle,
   Keyboard,
 } from "react-native";
-import { Sparkles, ArrowUpRight } from "lucide-react-native";
+import { ArrowUpRight } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { colors, radius } from "@/theme";
 import { PressableScale } from "@/components/ui/pressable-scale";
+import { Icon } from "@/components/ui/icons";
 
-export const DEFAULT_SEARCH_PLACEHOLDER = "quiet pet friendly cabin with hot tub";
+export const PROMPT_SUGGESTION = "cabin with a hot tub";
+export const DEFAULT_SEARCH_PLACEHOLDER = PROMPT_SUGGESTION;
 
 export interface SearchPromptProps {
   value?: string;
@@ -78,8 +80,8 @@ export function SearchPrompt({
         style,
       ]}
     >
-      {/* Sparkles icon */}
-      <Sparkles size={24} color={colors.textPrimary} strokeWidth={2.2} />
+      {/* Plain Search icon */}
+      <Icon name="search" size={24} tone="ink" />
 
       {/* TextInput */}
       <TextInput
@@ -88,6 +90,7 @@ export function SearchPrompt({
         onSubmitEditing={handleReturnSubmit}
         placeholder={placeholder}
         placeholderTextColor="rgba(11, 11, 26, 0.5)"
+        className="placeholder:text-ink/50"
         autoFocus={autoFocus}
         editable={editable}
         onPress={onPressBar}

@@ -114,6 +114,12 @@ function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
         }}
       />
       <Stack.Screen
+        name="stay/[slug]/book"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="design-system"
         options={{
           headerShown: true,

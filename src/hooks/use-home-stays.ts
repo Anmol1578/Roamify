@@ -1,122 +1,144 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Property } from '@/lib/stays'
-import { CategoryFilter } from '@/components/home/category-chips'
-import { sanityQuery } from '@/lib/sanity/fetch'
-import { HOME_STAYS_QUERY } from '@/lib/sanity/queries'
-import { posthogLog } from '@/lib/posthog'
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Property } from "@/lib/stays";
+import { CategoryFilter } from "@/components/home/category-chips";
+import { sanityQuery } from "@/lib/sanity/fetch";
+import { HOME_STAYS_QUERY } from "@/lib/sanity/queries";
+import { posthog, posthogLog } from "@/lib/posthog";
 
-const memoryCache = new Map<CategoryFilter, Property[]>()
+const memoryCache = new Map<CategoryFilter, Property[]>();
 
 export interface UseHomeStaysResult {
-  stays: Property[]
-  isLoading: boolean
-  isFetching: boolean
-  isRefreshing: boolean
-  isError: boolean
-  error: Error | null
-  refetch: () => Promise<void>
-  refresh: () => Promise<void>
+  stays: Property[];
+  isLoading: boolean;
+  isFetching: boolean;
+  isRefreshing: boolean;
+  refreshing: boolean;
+  isError: boolean;
+  error: Error | null;
+  refreshError: Error | null;
+  clearRefreshError: () => void;
+  refetch: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 export function useHomeStays(category: CategoryFilter): UseHomeStaysResult {
-  const cached = memoryCache.get(category)
-  const [liveData, setLiveData] = useState<{ category: CategoryFilter; stays: Property[] } | null>(null)
-  const [fetchCounter, setFetchCounter] = useState<number>(0)
-  const [isLoading, setIsLoading] = useState<boolean>(!cached)
-  const [isFetching, setIsFetching] = useState<boolean>(false)
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
-  const [isError, setIsError] = useState<boolean>(false)
-  const [error, setError] = useState<Error | null>(null)
+  const cached = memoryCache.get(category);
+  const [loaded, setLoaded] = useState<{ key: CategoryFilter; data: Property[] } | null>(
+    cached ? { key: category, data: cached } : null
+  );
+  const [shown, setShown] = useState<Property[]>(cached ?? []);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [isError, setIsError] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [refreshError, setRefreshError] = useState<Error | null>(null);
 
-  // Derive active stays during render
+  // Synchronize during render when category changes if cached
+  const [prevCategory, setPrevCategory] = useState(category);
+  if (category !== prevCategory) {
+    setPrevCategory(category);
+    const entry = memoryCache.get(category);
+    if (entry) {
+      setShown(entry);
+    }
+  }
+
   const stays = useMemo(() => {
-    if (liveData?.category === category) {
-      return liveData.stays
+    if (loaded?.key === category) {
+      return loaded.data;
     }
-    if (cached) {
-      return cached
+    const fromCache = memoryCache.get(category);
+    if (fromCache) {
+      return fromCache;
     }
-    return []
-  }, [category, cached, liveData])
+    return shown;
+  }, [category, loaded, shown]);
 
   useEffect(() => {
-    let isMounted = true
-    const abortController = new AbortController()
+    let cancelled = false;
 
-    // If already cached and not forced refetch, do nothing
-    if (memoryCache.has(category) && fetchCounter === 0) {
-      return
-    }
-
-    const runFetch = async () => {
-      setIsFetching(true)
-      if (!memoryCache.has(category)) {
-        setIsLoading(true)
-      }
-      setIsError(false)
-      setError(null)
-
-      try {
-        const results = await sanityQuery<Property[]>(
-          HOME_STAYS_QUERY,
-          { type: category },
-          abortController.signal
-        )
-
-        if (isMounted) {
-          posthogLog.info('home_stays_loaded', {
+    if (!memoryCache.has(category)) {
+      sanityQuery<Property[]>(HOME_STAYS_QUERY, { type: category })
+        .then((results) => {
+          if (cancelled) return;
+          posthogLog.info("home_stays_loaded", {
             category,
             listing_count: results.length,
-          })
-          memoryCache.set(category, results)
-          setLiveData({ category, stays: results })
-          setIsLoading(false)
-          setIsFetching(false)
-          setIsRefreshing(false)
-        }
-      } catch (err: unknown) {
-        if ((err as Error)?.name === 'AbortError') {
-          return
-        }
-
-        if (isMounted) {
-          posthogLog.warn('home_stays_fallback_activated', { category })
-          console.warn('[useHomeStays] Sanity query error, falling back:', err)
-          setIsError(true)
-          setError(err instanceof Error ? err : new Error(String(err)))
-          setIsLoading(false)
-          setIsFetching(false)
-          setIsRefreshing(false)
-        }
-      }
+          });
+          memoryCache.set(category, results);
+          setLoaded({ key: category, data: results });
+          setShown(results);
+          setIsError(false);
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          const fetchErr = err instanceof Error ? err : new Error(String(err));
+          console.warn("[useHomeStays] Sanity query error:", err);
+          setIsError(true);
+          setError(fetchErr);
+        });
     }
-
-    void runFetch()
 
     return () => {
-      isMounted = false
-      abortController.abort()
-    }
-  }, [category, fetchCounter])
-
-  const refetch = useCallback(async () => {
-    setFetchCounter((c) => c + 1)
-  }, [])
+      cancelled = true;
+    };
+  }, [category]);
 
   const refresh = useCallback(async () => {
-    memoryCache.delete(category)
-    setIsRefreshing(true)
-    setFetchCounter((c) => c + 1)
-  }, [category])
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      const results = await sanityQuery<Property[]>(HOME_STAYS_QUERY, {
+        type: category,
+      });
+      memoryCache.set(category, results);
+      setLoaded({ key: category, data: results });
+      setShown(results);
+      setRefreshing(false);
+      posthog?.capture("stays_refreshed", { screen: "home" });
+    } catch (err: unknown) {
+      const fetchErr = err instanceof Error ? err : new Error(String(err));
+      setRefreshing(false);
+      setRefreshError(fetchErr);
+    }
+  }, [category]);
+
+  const refetch = useCallback(async () => {
+    memoryCache.delete(category);
+    try {
+      const results = await sanityQuery<Property[]>(HOME_STAYS_QUERY, {
+        type: category,
+      });
+      memoryCache.set(category, results);
+      setLoaded({ key: category, data: results });
+      setShown(results);
+      setIsError(false);
+      setError(null);
+    } catch (err: unknown) {
+      const fetchErr = err instanceof Error ? err : new Error(String(err));
+      setIsError(true);
+      setError(fetchErr);
+    }
+  }, [category]);
+
+  const clearRefreshError = useCallback(() => {
+    setRefreshError(null);
+  }, []);
+
+  const isFetching = !memoryCache.has(category) && loaded?.key !== category;
+  const isLoading = isFetching && stays.length === 0;
 
   return {
     stays,
-    isLoading: isLoading && stays.length === 0,
+    isLoading,
     isFetching,
-    isRefreshing,
+    isRefreshing: refreshing,
+    refreshing,
     isError,
     error,
+    refreshError,
+    clearRefreshError,
     refetch,
     refresh,
-  }
+  };
 }

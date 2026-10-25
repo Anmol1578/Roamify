@@ -13,6 +13,8 @@ export const motion = {
   base: 250,
   slow: 400,
   stagger: 40,
+  pulse: 900,
+  cssEaseInOut: cubicBezier(0.77, 0, 0.175, 1),
   press: {
     scale: 0.97,
     duration: 120,

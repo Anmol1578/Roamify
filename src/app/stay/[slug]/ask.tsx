@@ -4,7 +4,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Modal,
 } from "react-native";
 import { Image } from "expo-image";
@@ -38,6 +37,9 @@ import { MessageBubble } from "@/components/ask/message-bubble";
 import { TopicChips } from "@/components/ask/topic-chips";
 import { AskInput } from "@/components/ask/ask-input";
 import { AnswerCardComponent } from "@/components/ask/answer-card";
+import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadError } from "@/components/load-error";
 import { posthog } from "@/lib/posthog";
 import { useAsk } from "@/hooks/use-ask";
 
@@ -321,110 +323,32 @@ export default function AskScreen() {
               flex: 1,
               alignItems: "center",
               justifyContent: "center",
-              gap: 12,
               padding: 24,
             }}
           >
-            <ActivityIndicator size="large" color="#7C3AED" />
-            <ThemedText
-              style={{
-                fontSize: 15,
-                fontFamily: "PlusJakartaSans_500Medium",
-                color: colors.textSecondary,
-              }}
-            >
-              Loading this stay…
-            </ThemedText>
+            <Spinner size="large" tone="primary" />
           </View>
         )}
 
         {/* Error State */}
         {!isLoading && isError && (
-          <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 14,
-              padding: 24,
-            }}
-          >
-            <ThemedText
-              style={{
-                fontSize: 16,
-                fontFamily: "PlusJakartaSans_600SemiBold",
-                color: colors.textPrimary,
-                textAlign: "center",
-              }}
-            >
-              {"We couldn't load this stay."}
-            </ThemedText>
-            <PressableScale
-              onPress={() => refetch()}
-              scale={0.95}
-              style={{
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                backgroundColor: colors.textPrimary,
-                borderRadius: radius.full,
-              }}
-            >
-              <ThemedText
-                style={{
-                  fontSize: 14,
-                  fontFamily: "PlusJakartaSans_700Bold",
-                  fontWeight: "700",
-                  color: colors.surfaceWhite,
-                }}
-              >
-                Try again
-              </ThemedText>
-            </PressableScale>
+          <View style={{ flex: 1, justifyContent: "center" }}>
+            <LoadError subject="this stay" error={null} onRetry={() => refetch()} />
           </View>
         )}
 
         {/* Not Found State */}
         {!isLoading && !isError && !stay && (
-          <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 14,
-              padding: 24,
-            }}
-          >
-            <ThemedText
-              style={{
-                fontSize: 16,
-                fontFamily: "PlusJakartaSans_600SemiBold",
-                color: colors.textPrimary,
-                textAlign: "center",
+          <View style={{ flex: 1, justifyContent: "center" }}>
+            <EmptyState
+              icon="pinOff"
+              title="This stay isn't available"
+              message="It may have been removed by its host."
+              action={{
+                title: "Back",
+                onPress: handleBack,
               }}
-            >
-              {"This stay isn't available anymore."}
-            </ThemedText>
-            <PressableScale
-              onPress={handleBack}
-              scale={0.95}
-              style={{
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                backgroundColor: colors.textPrimary,
-                borderRadius: radius.full,
-              }}
-            >
-              <ThemedText
-                style={{
-                  fontSize: 14,
-                  fontFamily: "PlusJakartaSans_700Bold",
-                  fontWeight: "700",
-                  color: colors.surfaceWhite,
-                }}
-              >
-                Back
-              </ThemedText>
-            </PressableScale>
+            />
           </View>
         )}
 

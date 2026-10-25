@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/expo";
 import { Property } from "@/lib/stays";
 import { SearchIntent, emptyIntent } from "@/lib/search/intent";
@@ -7,7 +7,7 @@ import { posthog } from "@/lib/posthog";
 
 export type SearchRequest = { q: string } | { intent: SearchIntent };
 
-interface CachedResult {
+export interface CachedResult {
   stays: Property[];
   intent: SearchIntent;
   total: number;
@@ -20,9 +20,15 @@ export interface UseSearchStaysResult {
   intent: SearchIntent;
   total: number;
   isLoading: boolean;
+  pending: boolean;
+  isFetching: boolean;
+  refreshing: boolean;
   isError: boolean;
   error: Error | null;
-  refetch: () => void;
+  refreshError: Error | null;
+  clearRefreshError: () => void;
+  refetch: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 export function useSearchStays(
@@ -30,8 +36,6 @@ export function useSearchStays(
   sortOption: SortOption = "best_match"
 ): UseSearchStaysResult {
   const { getToken } = useAuth();
-  const [liveData, setLiveData] = useState<{ key: string; result: CachedResult } | null>(null);
-  const [fetchTrigger, setFetchTrigger] = useState(0);
 
   const requestKey = useMemo(() => {
     if (!request) return "";
@@ -43,133 +47,265 @@ export function useSearchStays(
 
   const cached = requestKey ? searchCache.get(requestKey) : undefined;
 
-  const [isFetching, setIsFetching] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState<{ key: string; result: CachedResult } | null>(
+    cached && requestKey ? { key: requestKey, result: cached } : null
+  );
+  const [shown, setShown] = useState<CachedResult>(
+    cached ?? {
+      stays: [],
+      intent:
+        request && "intent" in request
+          ? request.intent
+          : emptyIntent(request && "q" in request ? request.q : ""),
+      total: 0,
+    }
+  );
+
+  // Synchronize during render when requestKey changes
+  const [prevKey, setPrevKey] = useState(requestKey);
+  if (requestKey !== prevKey) {
+    setPrevKey(requestKey);
+    if (requestKey) {
+      const entry = searchCache.get(requestKey);
+      if (entry) {
+        setShown(entry);
+      }
+    }
+  }
+
+  const [isFetchingState, setIsFetchingState] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshError, setRefreshError] = useState<Error | null>(null);
 
   const currentResult = useMemo<CachedResult>(() => {
-    if (liveData?.key === requestKey) {
-      return liveData.result;
+    if (loaded?.key === requestKey) {
+      return loaded.result;
     }
-    if (cached) {
-      return cached;
+    if (requestKey && searchCache.has(requestKey)) {
+      return searchCache.get(requestKey)!;
     }
-    return {
-      stays: [],
-      intent: request && "intent" in request ? request.intent : emptyIntent(request && "q" in request ? request.q : ""),
-      total: 0,
-    };
-  }, [requestKey, cached, liveData, request]);
+    return shown;
+  }, [requestKey, loaded, shown]);
+
+  const lastSuccessfulIntentRef = useRef<SearchIntent | null>(null);
+  useEffect(() => {
+    if (currentResult.intent && currentResult.intent.text) {
+      lastSuccessfulIntentRef.current = currentResult.intent;
+    }
+  }, [currentResult.intent]);
 
   useEffect(() => {
-    if (!requestKey || (searchCache.has(requestKey) && fetchTrigger === 0)) {
-      return;
+    let cancelled = false;
+
+    if (requestKey && !searchCache.has(requestKey)) {
+      (async () => {
+        try {
+          const token = await getToken();
+          if (cancelled) return;
+
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+          if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+
+          const bodyPayload = {
+            ...request,
+            sort: sortOption,
+          };
+
+          const res = await fetch("/api/search", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(bodyPayload),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Search failed with status ${res.status}`);
+          }
+
+          const data = await res.json();
+          if (cancelled) return;
+
+          const result: CachedResult = {
+            stays: data.stays || [],
+            intent: data.intent || emptyIntent(),
+            total: data.total !== undefined ? data.total : data.stays?.length || 0,
+          };
+
+          searchCache.set(requestKey, result);
+
+          if (request && "q" in request && data.intent) {
+            const intentKey = `intent:${JSON.stringify(data.intent)}|sort:${sortOption}`;
+            searchCache.set(intentKey, result);
+          }
+
+          setLoaded({ key: requestKey, result });
+          setShown(result);
+          setIsError(false);
+          setError(null);
+          setIsFetchingState(false);
+
+          const queryText = request && "q" in request ? request.q : data.intent?.text || "";
+          if (result.stays.length === 0) {
+            posthog?.capture("search_empty", {
+              query: queryText,
+              sort_option: sortOption,
+            });
+          } else {
+            posthog?.capture("search_results_returned", {
+              query: queryText,
+              results_count: result.stays.length,
+              sort_option: sortOption,
+            });
+          }
+        } catch (err: unknown) {
+          if (cancelled) return;
+          const e = err instanceof Error ? err : new Error(String(err));
+          setIsError(true);
+          setError(e);
+          setIsFetchingState(false);
+        }
+      })();
     }
-
-    let isCurrent = true;
-    const abortController = new AbortController();
-
-    const runFetch = async () => {
-      setIsFetching(true);
-      setIsError(false);
-      setError(null);
-
-
-      try {
-        const token = await getToken();
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
-        const bodyPayload = {
-          ...request,
-          sort: sortOption,
-        };
-
-        const res = await fetch("/api/search", {
-          method: "POST",
-          headers,
-          body: JSON.stringify(bodyPayload),
-          signal: abortController.signal,
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `Search failed with status ${res.status}`);
-        }
-
-        const data = await res.json();
-        if (!isCurrent) return;
-
-        const result: CachedResult = {
-          stays: data.stays || [],
-          intent: data.intent || emptyIntent(),
-          total: data.total !== undefined ? data.total : (data.stays?.length || 0),
-        };
-
-        // Cache result
-        searchCache.set(requestKey, result);
-
-        // Also cache under intent key if this was a `q` request
-        if (request && "q" in request && data.intent) {
-          const intentKey = `intent:${JSON.stringify(data.intent)}|sort:${sortOption}`;
-          searchCache.set(intentKey, result);
-        }
-
-        setLiveData({ key: requestKey, result });
-        setIsFetching(false);
-
-        // PostHog Telemetry
-        const queryText = request && "q" in request ? request.q : data.intent?.text || "";
-        if (result.stays.length === 0) {
-          posthog?.capture("search_empty", {
-            query: queryText,
-            sort_option: sortOption,
-          });
-        } else {
-          posthog?.capture("search_results_returned", {
-            query: queryText,
-            results_count: result.stays.length,
-            sort_option: sortOption,
-          });
-        }
-      } catch (err: unknown) {
-        if (!isCurrent) return;
-        const e = err as Error;
-        if (e.name === "AbortError") return;
-        setIsError(true);
-        setError(e);
-        setIsFetching(false);
-      }
-    };
-
-    runFetch();
 
     return () => {
-      isCurrent = false;
-      abortController.abort();
+      cancelled = true;
     };
-  }, [requestKey, fetchTrigger, request, sortOption, getToken]);
+  }, [requestKey, request, sortOption, getToken]);
 
-  const refetch = useCallback(() => {
-    if (requestKey) {
-      searchCache.delete(requestKey);
-      setFetchTrigger((t) => t + 1);
+  const refresh = useCallback(async () => {
+    if (!requestKey) return;
+    setRefreshing(true);
+    setRefreshError(null);
+
+    const override =
+      lastSuccessfulIntentRef.current && (!request || !("intent" in request))
+        ? { intent: lastSuccessfulIntentRef.current }
+        : request;
+
+    try {
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const bodyPayload = {
+        ...override,
+        sort: sortOption,
+      };
+
+      const res = await fetch("/api/search", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(bodyPayload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Search failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      const result: CachedResult = {
+        stays: data.stays || [],
+        intent: data.intent || emptyIntent(),
+        total: data.total !== undefined ? data.total : data.stays?.length || 0,
+      };
+
+      searchCache.set(requestKey, result);
+      setLoaded({ key: requestKey, result });
+      setShown(result);
+      setRefreshing(false);
+      posthog?.capture("stays_refreshed", { screen: "search" });
+    } catch (err: unknown) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setRefreshing(false);
+      setRefreshError(e);
     }
-  }, [requestKey]);
+  }, [requestKey, request, sortOption, getToken]);
 
-  const isLoading = Boolean(requestKey && !cached && (isFetching || liveData?.key !== requestKey));
+  const refetch = useCallback(async () => {
+    if (!requestKey) return;
+    searchCache.delete(requestKey);
+    setIsFetchingState(true);
+    try {
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const bodyPayload = {
+        ...request,
+        sort: sortOption,
+      };
+
+      const res = await fetch("/api/search", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(bodyPayload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Search failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      const result: CachedResult = {
+        stays: data.stays || [],
+        intent: data.intent || emptyIntent(),
+        total: data.total !== undefined ? data.total : data.stays?.length || 0,
+      };
+
+      searchCache.set(requestKey, result);
+      setLoaded({ key: requestKey, result });
+      setShown(result);
+      setIsError(false);
+      setError(null);
+      setIsFetchingState(false);
+    } catch (err: unknown) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setIsError(true);
+      setError(e);
+      setIsFetchingState(false);
+    }
+  }, [requestKey, request, sortOption, getToken]);
+
+  const clearRefreshError = useCallback(() => {
+    setRefreshError(null);
+  }, []);
+
+  const hasLoadedCurrentKey = Boolean(
+    requestKey && (loaded?.key === requestKey || searchCache.has(requestKey))
+  );
+  const isFetching = Boolean(requestKey && (!hasLoadedCurrentKey || isFetchingState));
+  const isLoading = Boolean(requestKey && !hasLoadedCurrentKey && shown.stays.length === 0);
+  const pending = Boolean(requestKey && !hasLoadedCurrentKey && isFetching && shown.stays.length > 0);
 
   return {
     stays: currentResult.stays,
     intent: currentResult.intent,
     total: currentResult.total,
     isLoading,
+    pending,
+    isFetching,
+    refreshing,
     isError,
     error,
+    refreshError,
+    clearRefreshError,
     refetch,
+    refresh,
   };
 }

@@ -2,10 +2,9 @@ import React from "react";
 import { View, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Calendar } from "lucide-react-native";
-import { colors, radius, spacing } from "@/theme";
+import { colors, spacing } from "@/theme";
 import { ThemedText } from "@/components/themed-text";
-import { PressableScale } from "@/components/ui/pressable-scale";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function TripsScreen() {
   const insets = useSafeAreaInsets();
@@ -35,81 +34,16 @@ export default function TripsScreen() {
           Trips
         </ThemedText>
 
-        <View
-          style={{
-            marginTop: 40,
-            paddingVertical: 56,
-            paddingHorizontal: 24,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#F8F9FA",
-            borderRadius: radius["2xl"],
-            borderWidth: 1,
-            borderColor: colors.borderGray,
-            gap: 16,
-          }}
-        >
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 36,
-              backgroundColor: colors.surfaceWhite,
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+        <View style={{ marginTop: 24 }}>
+          <EmptyState
+            icon="calendar"
+            title="No trips yet"
+            message="Stays you book will show up here."
+            action={{
+              title: "Explore stays",
+              onPress: () => router.navigate("/home"),
             }}
-          >
-            <Calendar size={32} color={colors.textPrimary} strokeWidth={2} />
-          </View>
-
-          <ThemedText
-            style={{
-              fontSize: 22,
-              lineHeight: 28,
-              fontFamily: "PlusJakartaSans_700Bold",
-              fontWeight: "700",
-              color: colors.textPrimary,
-              textAlign: "center",
-            }}
-          >
-            No trips booked yet
-          </ThemedText>
-
-          <ThemedText
-            style={{
-              fontSize: 15,
-              lineHeight: 22,
-              fontFamily: "PlusJakartaSans_400Regular",
-              color: colors.textSecondary,
-              textAlign: "center",
-              maxWidth: 280,
-            }}
-          >
-            When you book a stay, your upcoming reservation details will appear here.
-          </ThemedText>
-
-          <PressableScale
-            onPress={() => router.navigate("/home")}
-            style={{
-              marginTop: 8,
-              paddingHorizontal: 28,
-              paddingVertical: 14,
-              borderRadius: radius.full,
-              backgroundColor: colors.primaryYellow,
-            }}
-          >
-            <ThemedText
-              style={{
-                fontSize: 16,
-                fontFamily: "PlusJakartaSans_700Bold",
-                fontWeight: "700",
-                color: colors.textPrimary,
-              }}
-            >
-              Start exploring
-            </ThemedText>
-          </PressableScale>
+          />
         </View>
       </ScrollView>
     </View>

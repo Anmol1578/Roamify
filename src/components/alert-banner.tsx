@@ -4,25 +4,32 @@ import { Check, AlertCircle, X } from "lucide-react-native";
 import { colors, radius, spacing } from "@/theme";
 import { ThemedText } from "./themed-text";
 
-export type AlertType = "success" | "error";
+export type AlertType = "success" | "error" | "danger";
+export type AlertTone = "success" | "error" | "danger";
 
 export interface AlertBannerProps {
   type?: AlertType;
-  message: string;
+  tone?: AlertTone;
+  message?: string;
+  children?: React.ReactNode;
   onDismiss?: () => void;
   style?: StyleProp<ViewStyle>;
   className?: string;
 }
 
 export function AlertBanner({
-  type = "success",
+  type,
+  tone,
   message,
+  children,
   onDismiss,
   style,
   className,
 }: AlertBannerProps) {
-  const isSuccess = type === "success";
+  const effectiveTone = tone || type || "success";
+  const isSuccess = effectiveTone === "success";
   const config = isSuccess ? colors.statusSuccess : colors.statusError;
+  const content = message || children;
 
   return (
     <View
@@ -58,13 +65,17 @@ export function AlertBanner({
         )}
       </View>
 
-      <ThemedText
-        variant="caption"
-        color={config.text}
-        style={{ flex: 1, fontFamily: "PlusJakartaSans_600SemiBold" }}
-      >
-        {message}
-      </ThemedText>
+      {typeof content === "string" ? (
+        <ThemedText
+          variant="caption"
+          color={config.text}
+          style={{ flex: 1, fontFamily: "PlusJakartaSans_600SemiBold" }}
+        >
+          {content}
+        </ThemedText>
+      ) : (
+        <View style={{ flex: 1 }}>{content}</View>
+      )}
 
       {onDismiss ? (
         <Pressable
@@ -80,3 +91,6 @@ export function AlertBanner({
     </View>
   );
 }
+
+export const Alert = AlertBanner;
+export type AlertProps = AlertBannerProps;

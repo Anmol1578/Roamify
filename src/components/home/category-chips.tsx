@@ -15,12 +15,23 @@ export interface CategoryOption {
   icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number; fill?: string }>;
 }
 
+export const CATEGORY_ICONS: Record<
+  CategoryFilter,
+  React.ComponentType<{ size: number; color: string; strokeWidth?: number; fill?: string }>
+> = {
+  all: Home,
+  cabin: TreePine,
+  beach: Waves,
+  city: Building2,
+  villa: Palmtree,
+};
+
 export const CATEGORIES: CategoryOption[] = [
-  { id: "all", label: "All Stays", icon: Home },
-  { id: "cabin", label: "Cabins", icon: TreePine },
-  { id: "beach", label: "Beach", icon: Waves },
-  { id: "city", label: "City", icon: Building2 },
-  { id: "villa", label: "Villas", icon: Palmtree },
+  { id: "all", label: "All Stays", icon: CATEGORY_ICONS.all },
+  { id: "cabin", label: "Cabins", icon: CATEGORY_ICONS.cabin },
+  { id: "beach", label: "Beach", icon: CATEGORY_ICONS.beach },
+  { id: "city", label: "City", icon: CATEGORY_ICONS.city },
+  { id: "villa", label: "Villas", icon: CATEGORY_ICONS.villa },
 ];
 
 export interface CategoryChipsProps {

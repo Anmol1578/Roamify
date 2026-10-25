@@ -5,7 +5,7 @@ import {
   Share,
   Dimensions,
   Modal,
-  Alert,
+  RefreshControl,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,12 +23,9 @@ import {
   ChevronRight,
   MessageSquare,
   FileText,
-  Award,
   X,
-  AlertCircle,
   Clock,
   ShieldCheck,
-  MessageCircle,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { colors, radius } from "@/theme";
@@ -38,6 +35,11 @@ import { formatLocation, formatPrice } from "@/lib/stays";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";
 import { GoodToKnow } from "@/components/stay/good-to-know";
+import { HostSection } from "@/components/stay/host-section";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadError } from "@/components/load-error";
+import { Alert } from "@/components/alert-banner";
 import { posthog } from "@/lib/posthog";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -47,12 +49,20 @@ export default function StayDetailsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { stay, isLoading, isError, error } = useStay(slug);
+  const {
+    stay,
+    isLoading,
+    refreshing,
+    isError,
+    error,
+    refreshError,
+    clearRefreshError,
+    refresh,
+  } = useStay(slug);
   const { isFavorite, toggleFavorite } = useFavorites();
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [showAllRulesModal, setShowAllRulesModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
-  const [showHostModal, setShowHostModal] = useState(false);
 
   const stayId = stay?.slug || stay?.id || slug || "";
   const favorited = isFavorite(stayId);
@@ -106,112 +116,88 @@ export default function StayDetailsScreen() {
   };
 
   const handleBookPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    posthog?.capture("stay_booking_initiated", {
-      stay_id: stay?.id ?? "",
-      price: stay?.pricePerNight ?? 0,
-    });
-    Alert.alert(
-      "Coming Soon",
-      "Direct in-app booking will be available in the next release. Thank you for your interest!"
-    );
+    posthog?.capture("stay_book_tapped", { slug: stay?.slug ?? slug });
+    router.push(`/stay/${slug}/book` as any);
   };
 
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.surfaceWhite }}>
-        <View
-          style={{
-            height: HERO_HEIGHT,
-            backgroundColor: "#F3F4F6",
-            width: "100%",
-          }}
-        />
+        <Skeleton style={{ height: HERO_HEIGHT, width: "100%" }} />
         <View style={{ padding: 20, gap: 16 }}>
-          <View
+          <Skeleton style={{ width: "70%", height: 28, borderRadius: 6 }} />
+          <Skeleton style={{ width: "40%", height: 18, borderRadius: 6 }} />
+          <Skeleton style={{ width: "100%", height: 80, borderRadius: radius.xl }} />
+          <Skeleton style={{ width: "100%", height: 140, borderRadius: radius.xl }} />
+        </View>
+      </View>
+    );
+  }
+
+  if (isError && !stay) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.surfaceWhite, paddingTop: insets.top }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+          <PressableScale
+            onPress={handleBack}
+            scale={0.92}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
             style={{
-              width: "70%",
-              height: 28,
-              borderRadius: 6,
+              width: 42,
+              height: 42,
+              borderRadius: 21,
               backgroundColor: "#F3F4F6",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
-          <View
-            style={{
-              width: "40%",
-              height: 18,
-              borderRadius: 6,
-              backgroundColor: "#F3F4F6",
-            }}
-          />
-          <View
-            style={{
-              width: "100%",
-              height: 80,
-              borderRadius: radius.xl,
-              backgroundColor: "#F3F4F6",
-            }}
+          >
+            <ChevronLeft size={20} color="#111827" strokeWidth={2.4} />
+          </PressableScale>
+        </View>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <LoadError
+            error={error}
+            subject="this stay"
+            onRetry={refresh}
           />
         </View>
       </View>
     );
   }
 
-  if (isError || !stay) {
+  if (!stay) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.surfaceWhite,
-          paddingTop: insets.top + 40,
-          paddingHorizontal: 24,
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-        }}
-      >
-        <AlertCircle size={44} color="#EF4444" strokeWidth={2} />
-        <ThemedText
-          style={{
-            fontSize: 20,
-            fontFamily: "PlusJakartaSans_700Bold",
-            fontWeight: "700",
-            color: colors.textPrimary,
-            textAlign: "center",
-          }}
-        >
-          Stay not found
-        </ThemedText>
-        <ThemedText
-          style={{
-            fontSize: 14,
-            fontFamily: "PlusJakartaSans_500Medium",
-            color: colors.textSecondary,
-            textAlign: "center",
-          }}
-        >
-          {error?.message || "We could not find this property on Roamify."}
-        </ThemedText>
-        <PressableScale
-          onPress={handleBack}
-          style={{
-            paddingHorizontal: 24,
-            paddingVertical: 12,
-            borderRadius: radius.full,
-            backgroundColor: colors.primaryYellow,
-          }}
-        >
-          <ThemedText
+      <View style={{ flex: 1, backgroundColor: colors.surfaceWhite, paddingTop: insets.top }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+          <PressableScale
+            onPress={handleBack}
+            scale={0.92}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
             style={{
-              fontSize: 15,
-              fontFamily: "PlusJakartaSans_700Bold",
-              fontWeight: "700",
-              color: colors.textPrimary,
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: "#F3F4F6",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            Go back
-          </ThemedText>
-        </PressableScale>
+            <ChevronLeft size={20} color="#111827" strokeWidth={2.4} />
+          </PressableScale>
+        </View>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <EmptyState
+            icon="pinOff"
+            title="This stay isn't available"
+            message="It may have been removed by its host."
+            action={{
+              title: "Back",
+              onPress: handleBack,
+            }}
+          />
+        </View>
       </View>
     );
   }
@@ -231,6 +217,9 @@ export default function StayDetailsScreen() {
           paddingBottom: insets.bottom + 110,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+        }
       >
         {/* Hero Photo Carousel with 1 / 24 counter badge */}
         <View style={{ height: HERO_HEIGHT, width: SCREEN_WIDTH, position: "relative" }}>
@@ -378,6 +367,15 @@ export default function StayDetailsScreen() {
             gap: 20,
           }}
         >
+          {refreshError ? (
+            <View style={{ marginBottom: 4 }}>
+              <Alert
+                tone="danger"
+                message="Couldn't refresh. Showing what you had."
+                onDismiss={clearRefreshError}
+              />
+            </View>
+          ) : null}
           {/* Header Row: Extra Bold & Thick Title + Rating Box */}
           <View
             style={{
@@ -641,68 +639,6 @@ export default function StayDetailsScreen() {
             <ChevronRight size={20} color="#2563EB" strokeWidth={2.4} />
           </PressableScale>
 
-          {/* Card 3: Interactive Superhost / Host Option (CLICKABLE & RESPONSIVE) */}
-          {stay.host && (
-            <PressableScale
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                posthog?.capture("host_profile_opened", {
-                  stay_id: stay.id,
-                  host_id: stay.host?.id ?? "",
-                });
-                setShowHostModal(true);
-              }}
-              scale={0.98}
-              accessibilityRole="button"
-              accessibilityLabel={`Hosted by ${stay.host.name}, Superhost`}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                padding: 16,
-                borderRadius: 20,
-                backgroundColor: "#FFFFFF",
-                borderWidth: 1,
-                borderColor: "#F3F4F6",
-                gap: 14,
-              }}
-            >
-              <Image
-                source={{ uri: stay.host.avatarUrl }}
-                style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#E5E7EB" }}
-                contentFit="cover"
-              />
-
-              <View style={{ flex: 1, gap: 3 }}>
-                <ThemedText
-                  style={{
-                    fontSize: 16,
-                    fontFamily: "PlusJakartaSans_700Bold",
-                    fontWeight: "700",
-                    color: colors.textPrimary,
-                  }}
-                >
-                  {`Hosted by ${stay.host.name}`}
-                </ThemedText>
-
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                  <Award size={15} color="#B45309" strokeWidth={2.2} />
-                  <ThemedText
-                    style={{
-                      fontSize: 13,
-                      fontFamily: "PlusJakartaSans_600SemiBold",
-                      fontWeight: "600",
-                      color: colors.textSecondary,
-                    }}
-                  >
-                    Superhost
-                  </ThemedText>
-                </View>
-              </View>
-
-              <ChevronRight size={20} color="#9CA3AF" strokeWidth={2.2} />
-            </PressableScale>
-          )}
-
           {/* Good To Know Section */}
           <GoodToKnow
             rules={stay.houseRules}
@@ -715,6 +651,14 @@ export default function StayDetailsScreen() {
               setShowAllRulesModal(true);
             }}
           />
+
+          {/* Meet your host Section */}
+          {stay.host ? (
+            <>
+              <View style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 4 }} />
+              <HostSection host={stay.host} />
+            </>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -1162,286 +1106,7 @@ export default function StayDetailsScreen() {
         </View>
       </Modal>
 
-      {/* Superhost / Host Profile Modal (Interactive & Responsive) */}
-      <Modal
-        visible={showHostModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowHostModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: colors.surfaceWhite }}>
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingHorizontal: 20,
-              paddingTop: 20,
-              paddingBottom: 16,
-              borderBottomWidth: 1,
-              borderColor: "#E5E7EB",
-            }}
-          >
-            <ThemedText
-              style={{
-                fontSize: 19,
-                fontFamily: "PlusJakartaSans_800ExtraBold",
-                fontWeight: "800",
-                color: colors.textPrimary,
-              }}
-            >
-              Host Profile
-            </ThemedText>
-            <PressableScale
-              onPress={() => setShowHostModal(false)}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: "#F3F4F6",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <X size={18} color={colors.textPrimary} />
-            </PressableScale>
-          </View>
 
-          {/* Host Content ScrollView */}
-          <ScrollView
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingTop: 24,
-              paddingBottom: insets.bottom + 40,
-              gap: 20,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Host Hero Card */}
-            <View
-              style={{
-                alignItems: "center",
-                backgroundColor: "#F9FAFB",
-                borderRadius: 24,
-                padding: 24,
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-                gap: 12,
-              }}
-            >
-              <View style={{ position: "relative" }}>
-                <Image
-                  source={{ uri: stay.host?.avatarUrl }}
-                  style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: "#E5E7EB" }}
-                  contentFit="cover"
-                />
-                {stay.host?.isSuperhost && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      right: 0,
-                      backgroundColor: "#F59E0B",
-                      width: 26,
-                      height: 26,
-                      borderRadius: 13,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 2,
-                      borderColor: "#FFFFFF",
-                    }}
-                  >
-                    <Award size={14} color="#FFFFFF" />
-                  </View>
-                )}
-              </View>
-
-              <View style={{ alignItems: "center", gap: 4 }}>
-                <ThemedText
-                  style={{
-                    fontSize: 22,
-                    fontFamily: "PlusJakartaSans_800ExtraBold",
-                    fontWeight: "800",
-                    color: colors.textPrimary,
-                  }}
-                >
-                  {stay.host?.name}
-                </ThemedText>
-                <ThemedText
-                  style={{
-                    fontSize: 14,
-                    fontFamily: "PlusJakartaSans_600SemiBold",
-                    fontWeight: "600",
-                    color: "#D97706",
-                  }}
-                >
-                  {stay.host?.isSuperhost ? "Superhost · Verified Partner" : "Registered Host"}
-                </ThemedText>
-              </View>
-
-              {/* Stats Row */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  paddingTop: 16,
-                  borderTopWidth: 1,
-                  borderColor: "#E5E7EB",
-                  marginTop: 6,
-                }}
-              >
-                <View style={{ alignItems: "center", flex: 1, gap: 2 }}>
-                  <ThemedText
-                    style={{
-                      fontSize: 16,
-                      fontFamily: "PlusJakartaSans_800ExtraBold",
-                      fontWeight: "800",
-                      color: colors.textPrimary,
-                    }}
-                  >
-                    {stay.rating.toFixed(1)}
-                  </ThemedText>
-                  <ThemedText
-                    style={{
-                      fontSize: 12,
-                      fontFamily: "PlusJakartaSans_500Medium",
-                      color: colors.textSecondary,
-                    }}
-                  >
-                    Rating
-                  </ThemedText>
-                </View>
-
-                <View style={{ width: 1, height: 28, backgroundColor: "#E5E7EB" }} />
-
-                <View style={{ alignItems: "center", flex: 1, gap: 2 }}>
-                  <ThemedText
-                    style={{
-                      fontSize: 16,
-                      fontFamily: "PlusJakartaSans_800ExtraBold",
-                      fontWeight: "800",
-                      color: colors.textPrimary,
-                    }}
-                  >
-                    {stay.host?.responseRate || "100%"}
-                  </ThemedText>
-                  <ThemedText
-                    style={{
-                      fontSize: 12,
-                      fontFamily: "PlusJakartaSans_500Medium",
-                      color: colors.textSecondary,
-                    }}
-                  >
-                    Response rate
-                  </ThemedText>
-                </View>
-
-                <View style={{ width: 1, height: 28, backgroundColor: "#E5E7EB" }} />
-
-                <View style={{ alignItems: "center", flex: 1, gap: 2 }}>
-                  <ThemedText
-                    style={{
-                      fontSize: 16,
-                      fontFamily: "PlusJakartaSans_800ExtraBold",
-                      fontWeight: "800",
-                      color: colors.textPrimary,
-                    }}
-                  >
-                    {stay.host?.hostingSince || stay.host?.joinedDate || "2019"}
-                  </ThemedText>
-                  <ThemedText
-                    style={{
-                      fontSize: 12,
-                      fontFamily: "PlusJakartaSans_500Medium",
-                      color: colors.textSecondary,
-                    }}
-                  >
-                    Hosting since
-                  </ThemedText>
-                </View>
-              </View>
-            </View>
-
-            {/* Host Bio Section */}
-            <View style={{ gap: 8 }}>
-              <ThemedText
-                style={{
-                  fontSize: 17,
-                  fontFamily: "PlusJakartaSans_800ExtraBold",
-                  fontWeight: "800",
-                  color: colors.textPrimary,
-                }}
-              >
-                About the Host
-              </ThemedText>
-              <ThemedText
-                style={{
-                  fontSize: 14.5,
-                  lineHeight: 22,
-                  fontFamily: "PlusJakartaSans_400Regular",
-                  color: "#374151",
-                }}
-              >
-                {stay.host?.bio ||
-                  `${stay.host?.name} is a passionate host and hospitality professional who loves creating seamless, memorable stays for travelers across California. Known for exceptional cleanliness standards and prompt responses.`}
-              </ThemedText>
-            </View>
-
-            {/* Host Details Badges */}
-            <View style={{ gap: 10 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <Clock size={18} color="#6B7280" />
-                <ThemedText style={{ fontSize: 14, fontFamily: "PlusJakartaSans_500Medium", color: colors.textPrimary }}>
-                  {`Response time: ${stay.host?.responseTime || "Within an hour"}`}
-                </ThemedText>
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <MessageCircle size={18} color="#6B7280" />
-                <ThemedText style={{ fontSize: 14, fontFamily: "PlusJakartaSans_500Medium", color: colors.textPrimary }}>
-                  {`Languages: ${stay.host?.languages?.join(", ") || "English, Spanish"}`}
-                </ThemedText>
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <ShieldCheck size={18} color="#10B981" />
-                <ThemedText style={{ fontSize: 14, fontFamily: "PlusJakartaSans_600SemiBold", fontWeight: "600", color: "#065F46" }}>
-                  Identity & property credentials verified by Roamify
-                </ThemedText>
-              </View>
-            </View>
-
-            {/* Action Button: Message Host */}
-            <PressableScale
-              onPress={() => {
-                setShowHostModal(false);
-                handleAskPress();
-              }}
-              style={{
-                marginTop: 8,
-                paddingVertical: 14,
-                borderRadius: radius.full,
-                backgroundColor: colors.primaryYellow,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ThemedText
-                style={{
-                  fontSize: 15,
-                  fontFamily: "PlusJakartaSans_700Bold",
-                  fontWeight: "700",
-                  color: "#0B0B1A",
-                }}
-              >
-                Ask Host a Question
-              </ThemedText>
-            </PressableScale>
-          </ScrollView>
-        </View>
-      </Modal>
 
       {/* Show All Rules Modal Sheet */}
       <Modal

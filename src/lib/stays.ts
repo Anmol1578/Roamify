@@ -99,7 +99,7 @@ export interface Property {
   weeklyDiscountPercent?: number;
   rating: number;
   reviewCount: number;
-  maxGuests: number;
+  maxGuests?: number | null;
   bedrooms?: number;
   beds?: number;
   baths?: number;
@@ -161,3 +161,5 @@ export function formatRating(rating: number, reviewCount?: number): string {
   }
   return formatted;
 }
+
+export type StayDetails = Property;

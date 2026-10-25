@@ -15,6 +15,7 @@ import { Property } from "@/lib/stays";
 import { colors, radius } from "@/theme";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useFavorites } from "@/lib/favorites";
 
 export interface SearchListingCardProps {
@@ -100,11 +101,12 @@ export function SearchListingCard({
           gap: 14,
         }}
       >
-        {/* Left: Square Photo */}
+        {/* Left: Square Photo min-h-40 self-stretch */}
         <View
           style={{
             width: 130,
-            height: 130,
+            minHeight: 160,
+            alignSelf: "stretch",
             borderRadius: radius["2xl"],
             overflow: "hidden",
             backgroundColor: colors.surfaceGray,
@@ -119,12 +121,13 @@ export function SearchListingCard({
           />
         </View>
 
-        {/* Right: Content Info */}
+        {/* Right: Content Info with pb-3 */}
         <View
           style={{
             flex: 1,
             justifyContent: "space-between",
-            paddingVertical: 2,
+            paddingTop: 2,
+            paddingBottom: 12,
           }}
         >
           {/* Header Row: Title & Heart Favorite */}
@@ -305,5 +308,44 @@ export function SearchListingCard({
         </View>
       </View>
     </PressableScale>
+  );
+}
+
+export function ResultCardSkeleton() {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        width: "100%",
+        paddingVertical: 8,
+        gap: 14,
+      }}
+    >
+      <Skeleton
+        style={{
+          width: 130,
+          minHeight: 160,
+          alignSelf: "stretch",
+          borderRadius: radius["2xl"],
+        }}
+      />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "space-between",
+          paddingTop: 4,
+          paddingBottom: 12,
+        }}
+      >
+        <View style={{ gap: 8 }}>
+          <Skeleton style={{ width: "85%", height: 20 }} />
+          <Skeleton style={{ width: "55%", height: 16 }} />
+        </View>
+        <View style={{ gap: 8 }}>
+          <Skeleton style={{ width: "40%", height: 14 }} />
+          <Skeleton style={{ width: "50%", height: 22 }} />
+        </View>
+      </View>
+    </View>
   );
 }

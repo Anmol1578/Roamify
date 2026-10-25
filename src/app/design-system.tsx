@@ -44,6 +44,11 @@ import {
   GlassTabBar,
   TabId,
   BrandWordmark,
+  Skeleton,
+  EmptyState,
+  LoadError,
+  Icon,
+  HostSection,
 } from "@/components";
 
 export default function DesignSystemScreen() {
@@ -693,6 +698,111 @@ export default function DesignSystemScreen() {
             <Badge variant="discount" label="20% off" />
             <Badge variant="superhost" label="Superhost" />
           </View>
+        </View>
+
+        {/* 16. States (Skeletons, Empty States & Errors) */}
+        <View
+          style={{
+            backgroundColor: colors.surfaceWhite,
+            padding: spacing.xl,
+            borderRadius: radius["2xl"],
+            borderWidth: 1,
+            borderColor: colors.borderGray,
+            boxShadow: shadows.card,
+            gap: spacing.lg,
+          }}
+        >
+          <ThemedText variant="small" color={colors.textSecondary}>
+            16. States & Loaders
+          </ThemedText>
+
+          {/* Skeletons */}
+          <View style={{ gap: spacing.sm }}>
+            <ThemedText variant="subhead">Pulsing Skeletons</ThemedText>
+            <View style={{ gap: 10 }}>
+              <Skeleton style={{ width: "100%", height: 120, borderRadius: radius.xl }} />
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Skeleton style={{ width: 60, height: 60, borderRadius: 30 }} />
+                <View style={{ flex: 1, gap: 8, justifyContent: "center" }}>
+                  <Skeleton style={{ width: "80%", height: 16 }} />
+                  <Skeleton style={{ width: "50%", height: 14 }} />
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Empty State */}
+          <View style={{ gap: spacing.sm }}>
+            <ThemedText variant="subhead">Empty State</ThemedText>
+            <EmptyState
+              icon="pinOff"
+              title="This stay isn't available"
+              message="It may have been removed by its host."
+              action={{ title: "Back", onPress: () => {} }}
+            />
+          </View>
+
+          {/* Registry Icons */}
+          <View style={{ gap: spacing.sm }}>
+            <ThemedText variant="subhead">Registry Icons</ThemedText>
+            <View style={{ flexDirection: "row", gap: 16, alignItems: "center" }}>
+              <Icon name="wave" tone="primary" size={24} />
+              <Icon name="globe" tone="ink" size={24} />
+              <Icon name="wifiOff" tone="secondary" size={24} />
+              <Icon name="warning" tone="danger" size={24} />
+              <Icon name="searchOff" tone="muted" size={24} />
+              <Icon name="pinOff" tone="secondary" size={24} />
+            </View>
+          </View>
+
+          {/* LoadError Network Error */}
+          <View style={{ gap: spacing.sm }}>
+            <ThemedText variant="subhead">{"Load Error (Network / Can't connect)"}</ThemedText>
+            <LoadError
+              subject="stays"
+              error={new TypeError("Failed to fetch")}
+              onRetry={() => {}}
+            />
+          </View>
+
+          {/* LoadError Something Went Wrong */}
+          <View style={{ gap: spacing.sm }}>
+            <ThemedText variant="subhead">Load Error (Server / Something went wrong)</ThemedText>
+            <LoadError
+              subject="this stay"
+              error={new Error("Server 500 error")}
+              onRetry={() => {}}
+            />
+          </View>
+        </View>
+
+        {/* 17. Host Section */}
+        <View
+          style={{
+            backgroundColor: colors.surfaceWhite,
+            padding: spacing.xl,
+            borderRadius: radius["2xl"],
+            borderWidth: 1,
+            borderColor: colors.borderGray,
+            boxShadow: shadows.card,
+            gap: spacing.md,
+          }}
+        >
+          <ThemedText variant="small" color={colors.textSecondary}>
+            17. Meet your host
+          </ThemedText>
+          <HostSection
+            host={{
+              id: "host-1",
+              name: "Maya Brooks",
+              bio: "Designer and architect living between San Francisco and Lake Tahoe. I love designing warm, light-filled spaces that bring people together in nature.",
+              isSuperhost: true,
+              hostingSince: "May 2019",
+              responseTime: "Within an hour",
+              languages: ["English", "Spanish"],
+              avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&q=80",
+            }}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -48,3 +48,105 @@ export function houseRuleLines(rules?: HouseRules | any): string[] {
 
   return lines;
 }
+
+export function formatPrice(amount: number): string {
+  return amount.toLocaleString("en-US");
+}
+
+export interface PriceLine {
+  label: string;
+  amount: string;
+}
+
+export interface PriceDetails {
+  lines: PriceLine[];
+  total: string;
+  basePrice: number;
+  cleaningFee: number;
+  totalAmount: number;
+}
+
+export function priceLines(stay: { pricePerNight?: number; cleaningFee?: number }, nights = 2): PriceDetails {
+  const pricePerNight = stay.pricePerNight ?? 0;
+  const base = pricePerNight * nights;
+  const cleaning = stay.cleaningFee ?? 0;
+  const totalAmount = base + cleaning;
+
+  const lines: PriceLine[] = [
+    {
+      label: `$${formatPrice(pricePerNight)} × ${nights} nights`,
+      amount: `$${formatPrice(base)}`,
+    },
+  ];
+
+  if (cleaning > 0) {
+    lines.push({
+      label: "Cleaning fee",
+      amount: `$${formatPrice(cleaning)}`,
+    });
+  }
+
+  return {
+    lines,
+    total: `$${formatPrice(totalAmount)}`,
+    basePrice: base,
+    cleaningFee: cleaning,
+    totalAmount,
+  };
+}
+
+export function stayTotal(stay: { pricePerNight?: number; cleaningFee?: number }, nights = 2): number {
+  return (stay.pricePerNight ?? 0) * nights + (stay.cleaningFee ?? 0);
+}
+
+export type HostFactKey = "since" | "response" | "languages";
+
+export interface KeyedHostFact {
+  key: HostFactKey;
+  text: string;
+}
+
+export function hostFacts(host?: {
+  hostingSince?: string;
+  joinedDate?: string;
+  responseTime?: string;
+  responseRate?: string;
+  languages?: string[];
+} | null): KeyedHostFact[] {
+  if (!host) return [];
+  const facts: KeyedHostFact[] = [];
+
+  const since = host.hostingSince || host.joinedDate;
+  if (since) {
+    facts.push({
+      key: "since",
+      text: `Hosting since ${since}`,
+    });
+  }
+
+  if (host.responseTime) {
+    const resp = host.responseTime.trim();
+    facts.push({
+      key: "response",
+      text: resp.toLowerCase().startsWith("responds")
+        ? resp
+        : resp.toLowerCase().startsWith("within")
+        ? `Responds ${resp}`
+        : `Responds within ${resp}`,
+    });
+  } else if (host.responseRate) {
+    facts.push({
+      key: "response",
+      text: `Responds within an hour · ${host.responseRate}`,
+    });
+  }
+
+  if (host.languages && host.languages.length > 0) {
+    facts.push({
+      key: "languages",
+      text: `Speaks ${host.languages.join(" and ")}`,
+    });
+  }
+
+  return facts;
+}

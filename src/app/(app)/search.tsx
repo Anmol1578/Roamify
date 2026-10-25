@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from "react";
-
 import {
   View,
   ScrollView,
   TextInput,
   Pressable,
   Keyboard,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   SlidersHorizontal,
   ChevronDown,
-  RotateCcw,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -33,7 +32,13 @@ import {
 import { useSearchStays, SearchRequest } from "@/hooks/use-search-stays";
 import { ThemedText } from "@/components/themed-text";
 import { PressableScale } from "@/components/ui/pressable-scale";
-import { SearchListingCard } from "@/components/stays/search-listing-card";
+import {
+  SearchListingCard,
+  ResultCardSkeleton,
+} from "@/components/stays/search-listing-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadError } from "@/components/load-error";
+import { Alert } from "@/components/alert-banner";
 import { posthog } from "@/lib/posthog";
 
 interface FilterChipItem {
@@ -59,6 +64,12 @@ const SORT_LABELS: Record<SortOption, string> = {
   rating: "Highest rated",
 };
 
+const SUGGESTIONS = [
+  "cabin with a hot tub",
+  "beach house under $400",
+  "city apartment with a workspace",
+];
+
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -71,7 +82,6 @@ export default function SearchScreen() {
   const [edited, setEdited] = useState<SearchIntent | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>("best_match");
 
-
   // Synchronize during render when route params change
   if (paramQuery !== prevParamQ) {
     setPrevParamQ(paramQuery);
@@ -83,19 +93,25 @@ export default function SearchScreen() {
   // If chips were manually edited, send intent directly; otherwise send raw search string
   const searchRequest: SearchRequest = edited ? { intent: edited } : { q: activeQuery };
 
-
-
   // Live server search hook
-  const { stays, intent: returnedIntent, total, isLoading, isError, error, refetch } = useSearchStays(
-    searchRequest,
-    sortOption
-  );
+  const {
+    stays,
+    intent: returnedIntent,
+    total,
+    isLoading,
+    pending,
+    refreshing,
+    isError,
+    error,
+    refreshError,
+    clearRefreshError,
+    refresh,
+  } = useSearchStays(searchRequest, sortOption);
 
   // Active intent represents edited chips over returned server response or empty
   const effectiveIntent = useMemo<SearchIntent>(() => {
     return edited ?? (returnedIntent?.text ? returnedIntent : null) ?? emptyIntent(queryText);
   }, [edited, returnedIntent, queryText]);
-
 
   const handleQuerySubmit = () => {
     Keyboard.dismiss();
@@ -148,9 +164,20 @@ export default function SearchScreen() {
     router.setParams({ q: "" });
   };
 
+  const handleSuggestionTap = (suggestion: string, index: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    posthog?.capture("search_suggestion_tapped", { index });
+    setQueryText(suggestion);
+    setActiveQuery(suggestion);
+    setEdited(null);
+    router.setParams({ q: suggestion });
+  };
+
   const { applied: appliedFilters, avoided: avoidedFilters } = useMemo(() => {
     return describeIntent(effectiveIntent);
   }, [effectiveIntent]);
+
+  const hasHardConstraints = appliedFilters.length > 0 || avoidedFilters.length > 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surfaceWhite }}>
@@ -160,6 +187,9 @@ export default function SearchScreen() {
           paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+        }
       >
         {/* Top Header Row: Circular Back Button & Search Input Pill */}
         <View
@@ -275,6 +305,17 @@ export default function SearchScreen() {
           })}
         </ScrollView>
 
+        {/* Can't refresh failure Alert */}
+        {refreshError && stays.length > 0 ? (
+          <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+            <Alert
+              tone="danger"
+              message="Couldn't refresh. Showing what you had."
+              onDismiss={clearRefreshError}
+            />
+          </View>
+        ) : null}
+
         {/* Sub-header Row: Stays Count & Sort Selector */}
         <View
           style={{
@@ -288,12 +329,16 @@ export default function SearchScreen() {
           <ThemedText
             style={{
               fontSize: 16,
-              fontFamily: "PlusJakartaSans_700Bold",
-              fontWeight: "700",
-              color: colors.textPrimary,
+              fontFamily: isLoading || pending ? "PlusJakartaSans_500Medium" : "PlusJakartaSans_700Bold",
+              fontWeight: isLoading || pending ? "500" : "700",
+              color: isLoading || pending ? colors.textSecondary : colors.textPrimary,
             }}
           >
-            {isLoading ? "Searching stays..." : `${total} ${total === 1 ? "stay" : "stays"}`}
+            {isLoading
+              ? "Finding stays…"
+              : pending
+              ? "Updating…"
+              : `${total} ${total === 1 ? "stay" : "stays"}`}
           </ThemedText>
 
           <PressableScale
@@ -334,195 +379,142 @@ export default function SearchScreen() {
             /* Loading Skeleton Placeholders */
             <View style={{ gap: 12, marginTop: 12 }}>
               {[1, 2, 3].map((key) => (
-                <View
-                  key={key}
-                  style={{
-                    flexDirection: "row",
-                    gap: 14,
-                    paddingVertical: 8,
-                    width: "100%",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 130,
-                      height: 130,
-                      borderRadius: radius["2xl"],
-                      backgroundColor: "#F3F4F6",
-                    }}
-                  />
-                  <View style={{ flex: 1, gap: 10, justifyContent: "center" }}>
-                    <View
-                      style={{
-                        width: "80%",
-                        height: 18,
-                        borderRadius: 6,
-                        backgroundColor: "#F3F4F6",
-                      }}
-                    />
-                    <View
-                      style={{
-                        width: "50%",
-                        height: 14,
-                        borderRadius: 6,
-                        backgroundColor: "#F3F4F6",
-                      }}
-                    />
-                    <View
-                      style={{
-                        width: "60%",
-                        height: 18,
-                        borderRadius: 6,
-                        backgroundColor: "#F3F4F6",
-                      }}
-                    />
-                  </View>
-                </View>
+                <ResultCardSkeleton key={key} />
               ))}
             </View>
-          ) : isError ? (
+          ) : isError && stays.length === 0 ? (
             /* Error State */
-            <View
-              style={{
-                marginTop: 24,
-                paddingVertical: 40,
-                paddingHorizontal: 20,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#FEF2F2",
-                borderRadius: radius["2xl"],
-                borderWidth: 1,
-                borderColor: "#FCA5A5",
-                gap: 12,
-              }}
-            >
-              <ThemedText
-                style={{
-                  fontSize: 18,
-                  fontFamily: "PlusJakartaSans_700Bold",
-                  fontWeight: "700",
-                  color: "#991B1B",
-                  textAlign: "center",
-                }}
-              >
-                Could not load stays
-              </ThemedText>
-              <ThemedText
-                style={{
-                  fontSize: 13.5,
-                  fontFamily: "PlusJakartaSans_500Medium",
-                  color: "#7F1D1D",
-                  textAlign: "center",
-                }}
-              >
-                {error?.message || "Check your internet connection and try again."}
-              </ThemedText>
-              <PressableScale
-                onPress={refetch}
-                style={{
-                  marginTop: 6,
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.surfaceWhite,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  borderWidth: 1,
-                  borderColor: "#FCA5A5",
-                }}
-              >
-                <RotateCcw size={16} color="#991B1B" />
-                <ThemedText
-                  style={{
-                    fontSize: 14,
-                    fontFamily: "PlusJakartaSans_700Bold",
-                    fontWeight: "700",
-                    color: "#991B1B",
-                  }}
-                >
-                  Try again
-                </ThemedText>
-              </PressableScale>
+            <View style={{ marginTop: 24 }}>
+              <LoadError subject="stays" error={error} onRetry={refresh} />
             </View>
           ) : stays.length === 0 ? (
             /* Empty State */
-            <View
-              style={{
-                marginTop: 24,
-                paddingVertical: 48,
-                paddingHorizontal: 20,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#F9FAFB",
-                borderRadius: radius["2xl"],
-                borderWidth: 1,
-                borderColor: colors.borderGray,
-                gap: 12,
-              }}
-            >
-              <ThemedText
-                style={{
-                  fontSize: 19,
-                  lineHeight: 25,
-                  fontFamily: "PlusJakartaSans_700Bold",
-                  fontWeight: "700",
-                  color: colors.textPrimary,
-                  textAlign: "center",
+            <View style={{ marginTop: 24 }}>
+              <EmptyState
+                icon="searchOff"
+                title="No stays match that yet"
+                message={
+                  hasHardConstraints
+                    ? "Try adjusting your search criteria or explore recommendations below."
+                    : "Try describing your stay another way."
+                }
+                action={{
+                  title: "Clear search",
+                  onPress: handleResetFilters,
                 }}
               >
-                No stays match your criteria
-              </ThemedText>
+                {/* Constraint Badges */}
+                {hasHardConstraints ? (
+                  <View style={{ alignItems: "center", gap: 8, marginTop: 6 }}>
+                    <ThemedText
+                      style={{
+                        fontSize: 13,
+                        fontFamily: "PlusJakartaSans_600SemiBold",
+                        color: colors.textSecondary,
+                      }}
+                    >
+                      Every stay has to meet these:
+                    </ThemedText>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      {appliedFilters.map((filter, i) => (
+                        <View
+                          key={i}
+                          style={{
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            borderRadius: radius.full,
+                            backgroundColor: "#F4EDFF",
+                          }}
+                        >
+                          <ThemedText
+                            style={{
+                              fontSize: 12,
+                              fontFamily: "PlusJakartaSans_600SemiBold",
+                              color: "#6D28D9",
+                            }}
+                          >
+                            {filter}
+                          </ThemedText>
+                        </View>
+                      ))}
+                      {avoidedFilters.map((filter, i) => (
+                        <View
+                          key={`avoided-${i}`}
+                          style={{
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            borderRadius: radius.full,
+                            backgroundColor: "#FEF2F2",
+                          }}
+                        >
+                          <ThemedText
+                            style={{
+                              fontSize: 12,
+                              fontFamily: "PlusJakartaSans_600SemiBold",
+                              color: "#DC2626",
+                            }}
+                          >
+                            {`No ${filter}`}
+                          </ThemedText>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
 
-              {appliedFilters.length > 0 ? (
-                <ThemedText
-                  style={{
-                    fontSize: 13.5,
-                    lineHeight: 19,
-                    fontFamily: "PlusJakartaSans_500Medium",
-                    color: colors.textSecondary,
-                    textAlign: "center",
-                  }}
-                >
-                  {`Filters applied: ${appliedFilters.join(", ")}`}
-                </ThemedText>
-              ) : null}
-
-              {avoidedFilters.length > 0 ? (
-                <ThemedText
-                  style={{
-                    fontSize: 13.5,
-                    lineHeight: 19,
-                    fontFamily: "PlusJakartaSans_500Medium",
-                    color: "#B45309",
-                    textAlign: "center",
-                  }}
-                >
-                  {`Excluded: ${avoidedFilters.join(", ")}`}
-                </ThemedText>
-              ) : null}
-
-              <PressableScale
-                onPress={handleResetFilters}
-                style={{
-                  marginTop: 8,
-                  paddingHorizontal: 24,
-                  paddingVertical: 12,
-                  borderRadius: radius.full,
-                  backgroundColor: colors.primaryYellow,
-                }}
-              >
-                <ThemedText
-                  style={{
-                    fontSize: 14.5,
-                    fontFamily: "PlusJakartaSans_700Bold",
-                    fontWeight: "700",
-                    color: colors.textPrimary,
-                  }}
-                >
-                  Reset filters
-                </ThemedText>
-              </PressableScale>
+                {/* Suggestion Chips */}
+                <View style={{ alignItems: "center", gap: 10, marginTop: 14 }}>
+                  <ThemedText
+                    style={{
+                      fontSize: 13,
+                      fontFamily: "PlusJakartaSans_600SemiBold",
+                      color: colors.textSecondary,
+                    }}
+                  >
+                    Try one of these:
+                  </ThemedText>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    {SUGGESTIONS.map((suggestion, idx) => (
+                      <PressableScale
+                        key={idx}
+                        onPress={() => handleSuggestionTap(suggestion, idx)}
+                        style={{
+                          paddingHorizontal: 14,
+                          paddingVertical: 7,
+                          borderRadius: radius.full,
+                          backgroundColor: "#F3F4F6",
+                          borderWidth: 1,
+                          borderColor: "#E5E7EB",
+                        }}
+                      >
+                        <ThemedText
+                          style={{
+                            fontSize: 13,
+                            fontFamily: "PlusJakartaSans_600SemiBold",
+                            color: colors.textPrimary,
+                          }}
+                        >
+                          {suggestion}
+                        </ThemedText>
+                      </PressableScale>
+                    ))}
+                  </View>
+                </View>
+              </EmptyState>
             </View>
           ) : (
             /* Compact Listing Cards with Staggered Entrance */
