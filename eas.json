@@ -15,7 +15,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "${EXPO_PUBLIC_API_URL}"
+        "EXPO_PUBLIC_API_URL": "https://roamify-studio.vercel.app"
       }
     },
     "preview-simulator": {
@@ -28,7 +28,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "${EXPO_PUBLIC_API_URL}"
+        "EXPO_PUBLIC_API_URL": "https://roamify-studio.vercel.app"
       }
     }
   },
