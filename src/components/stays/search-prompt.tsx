@@ -10,9 +10,9 @@ import { ArrowUpRight } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { colors, radius } from "@/theme";
 import { PressableScale } from "@/components/ui/pressable-scale";
-import { Icon } from "@/components/ui/icons";
+import { SparklesIcon } from "@/components/ui/sparkles-icon";
 
-export const PROMPT_SUGGESTION = "cabin with a hot tub";
+export const PROMPT_SUGGESTION = "quiet pet friendly cabin with hot tub";
 export const DEFAULT_SEARCH_PLACEHOLDER = PROMPT_SUGGESTION;
 
 export interface SearchPromptProps {
@@ -80,8 +80,8 @@ export function SearchPrompt({
         style,
       ]}
     >
-      {/* Plain Search icon */}
-      <Icon name="search" size={24} tone="ink" />
+      {/* Star / Sparkles logo */}
+      <SparklesIcon size={24} color={colors.textPrimary} />
 
       {/* TextInput */}
       <TextInput

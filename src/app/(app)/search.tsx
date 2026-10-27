@@ -10,7 +10,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  Search,
   ChevronLeft,
   SlidersHorizontal,
   ChevronDown,
@@ -39,6 +38,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadError } from "@/components/load-error";
 import { Alert } from "@/components/alert-banner";
+import { SparklesIcon } from "@/components/ui/sparkles-icon";
 import { posthog } from "@/lib/posthog";
 
 interface FilterChipItem {
@@ -233,7 +233,7 @@ export default function SearchScreen() {
               gap: 10,
             }}
           >
-            <Search size={18} color="#6B7280" strokeWidth={2.2} />
+            <SparklesIcon size={19} color="#6B7280" />
             <TextInput
               value={queryText}
               onChangeText={setQueryText}

@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/expo";
 import { Property } from "@/lib/stays";
-import { SearchIntent, emptyIntent } from "@/lib/search/intent";
-import { SortOption } from "@/lib/search/query";
+import { SearchIntent, emptyIntent, intentFromParsed } from "@/lib/search/intent";
+import { SortOption, buildSearchQuery } from "@/lib/search/query";
+import { parseQuery, ParsedQuery } from "@/lib/search/parse";
+import { sanityQuery } from "@/lib/sanity/fetch";
 import { posthog } from "@/lib/posthog";
 import { getApiUrl } from "@/lib/api";
 
@@ -30,6 +32,42 @@ export interface UseSearchStaysResult {
   clearRefreshError: () => void;
   refetch: () => Promise<void>;
   refresh: () => Promise<void>;
+}
+
+async function executeSanityFallback(
+  req: SearchRequest | undefined,
+  sort: SortOption
+): Promise<CachedResult> {
+  let parsed: ParsedQuery;
+  let fallbackIntent: SearchIntent;
+
+  if (req && "intent" in req) {
+    fallbackIntent = req.intent;
+    parsed = {
+      raw: fallbackIntent.text || "",
+      maxPrice: fallbackIntent.maxPrice,
+      guests: fallbackIntent.guests,
+      pets: fallbackIntent.pets === "wanted",
+      type: fallbackIntent.types?.required?.[0],
+      place: fallbackIntent.place,
+      amenities: fallbackIntent.amenities?.required || [],
+      terms: fallbackIntent.text ? [fallbackIntent.text] : [],
+      appliedFilters: [],
+    };
+  } else {
+    const rawQuery = req && "q" in req ? req.q : "";
+    parsed = parseQuery(rawQuery);
+    fallbackIntent = intentFromParsed(parsed);
+  }
+
+  const { query, params } = buildSearchQuery(parsed, sort);
+  const staysResult = await sanityQuery<Property[]>(query, params);
+
+  return {
+    stays: staysResult || [],
+    intent: fallbackIntent,
+    total: staysResult?.length || 0,
+  };
 }
 
 export function useSearchStays(
@@ -169,12 +207,25 @@ export function useSearchStays(
               sort_option: sortOption,
             });
           }
-        } catch (err: unknown) {
+        } catch {
           if (cancelled) return;
-          const e = err instanceof Error ? err : new Error(String(err));
-          setIsError(true);
-          setError(e);
-          setIsFetchingState(false);
+          try {
+            const fallbackResult = await executeSanityFallback(requestRef.current, sortOption);
+            if (cancelled) return;
+
+            searchCache.set(requestKey, fallbackResult);
+            setLoaded({ key: requestKey, result: fallbackResult });
+            setShown(fallbackResult);
+            setIsError(false);
+            setError(null);
+            setIsFetchingState(false);
+          } catch (fallbackErr: unknown) {
+            if (cancelled) return;
+            const e = fallbackErr instanceof Error ? fallbackErr : new Error(String(fallbackErr));
+            setIsError(true);
+            setError(e);
+            setIsFetchingState(false);
+          }
         }
       })();
     }
@@ -232,10 +283,19 @@ export function useSearchStays(
       setShown(result);
       setRefreshing(false);
       posthog?.capture("stays_refreshed", { screen: "search" });
-    } catch (err: unknown) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setRefreshing(false);
-      setRefreshError(e);
+    } catch {
+      try {
+        const fallbackResult = await executeSanityFallback(override, sortOption);
+        searchCache.set(requestKey, fallbackResult);
+        setLoaded({ key: requestKey, result: fallbackResult });
+        setShown(fallbackResult);
+        setRefreshing(false);
+        posthog?.capture("stays_refreshed", { screen: "search" });
+      } catch (fallbackErr: unknown) {
+        const e = fallbackErr instanceof Error ? fallbackErr : new Error(String(fallbackErr));
+        setRefreshing(false);
+        setRefreshError(e);
+      }
     }
   }, [requestKey, sortOption, getToken]);
 
@@ -282,11 +342,21 @@ export function useSearchStays(
       setIsError(false);
       setError(null);
       setIsFetchingState(false);
-    } catch (err: unknown) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setIsError(true);
-      setError(e);
-      setIsFetchingState(false);
+    } catch {
+      try {
+        const fallbackResult = await executeSanityFallback(requestRef.current, sortOption);
+        searchCache.set(requestKey, fallbackResult);
+        setLoaded({ key: requestKey, result: fallbackResult });
+        setShown(fallbackResult);
+        setIsError(false);
+        setError(null);
+        setIsFetchingState(false);
+      } catch (fallbackErr: unknown) {
+        const e = fallbackErr instanceof Error ? fallbackErr : new Error(String(fallbackErr));
+        setIsError(true);
+        setError(e);
+        setIsFetchingState(false);
+      }
     }
   }, [requestKey, sortOption, getToken]);
 
@@ -298,7 +368,9 @@ export function useSearchStays(
     requestKey && (loaded?.key === requestKey || searchCache.has(requestKey))
   );
   const isFetching = Boolean(requestKey && (!hasLoadedCurrentKey || isFetchingState));
-  const isLoading = Boolean(requestKey && !hasLoadedCurrentKey && shown.stays.length === 0);
+  const isLoading = Boolean(
+    requestKey && !hasLoadedCurrentKey && shown.stays.length === 0 && !isError
+  );
   const pending = Boolean(requestKey && !hasLoadedCurrentKey && isFetching && shown.stays.length > 0);
 
   return {
