@@ -102,11 +102,15 @@ async function verifySectionWithGroq(
     return false;
   }
 
-  const apiKey =
+  const apiKey = (
     process.env.GROQ_API_KEY ||
+    process.env.EXPO_PUBLIC_GROQ_API_KEY ||
     process.env.GROK_API_KEY ||
     process.env.Groq_API_Key ||
-    process.env.Grok_API_Key;
+    process.env.Grok_API_Key
+  )?.trim();
+
+
 
   if (!apiKey) {
     return true;

@@ -250,11 +250,15 @@ export async function answerQuestion(
   signal?: AbortSignal
 ): Promise<AnswerResult> {
   const trimmed = question.trim();
-  const apiKey =
+  const apiKey = (
     process.env.GROQ_API_KEY ||
+    process.env.EXPO_PUBLIC_GROQ_API_KEY ||
     process.env.GROK_API_KEY ||
     process.env.Groq_API_Key ||
-    process.env.Grok_API_Key;
+    process.env.Grok_API_Key
+  )?.trim();
+
+
 
   const candidates = buildCandidates(stay, snapshot);
   const candidateMap = new Map<string, CandidatePassage>();

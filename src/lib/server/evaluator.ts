@@ -144,11 +144,15 @@ export async function readIntent(
     return intentFromParsed(parsed);
   }
 
-  const apiKey =
+  const apiKey = (
     process.env.GROQ_API_KEY ||
+    process.env.EXPO_PUBLIC_GROQ_API_KEY ||
     process.env.GROK_API_KEY ||
     process.env.Groq_API_Key ||
-    process.env.Grok_API_Key;
+    process.env.Grok_API_Key
+  )?.trim();
+
+
 
   if (!apiKey) {
     console.warn("Groq / AI API key is not configured, using deterministic parser fallback");
@@ -201,8 +205,9 @@ Instructions:
       prompt,
       temperature: 0.1,
       maxRetries: 0,
-      abortSignal: AbortSignal.timeout(4000),
+      abortSignal: AbortSignal.timeout(8000),
     });
+
 
 
     const intent = emptyIntent(trimmed);

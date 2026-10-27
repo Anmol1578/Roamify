@@ -34,7 +34,7 @@ export function useAsk() {
 
       const timeoutId = setTimeout(() => {
         controller.abort();
-      }, 10000); // 10s client timeout
+      }, 20000); // 20s client timeout
 
       // Link external signal if provided
       if (externalSignal) {
