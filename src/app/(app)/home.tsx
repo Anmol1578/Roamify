@@ -23,6 +23,7 @@ import {
   CATEGORY_ICONS,
 } from "@/components/home/category-chips";
 import { PropertyCard } from "@/components/stays/property-card";
+import { Wordmark } from "@/components/brand-wordmark";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadError } from "@/components/load-error";
@@ -161,18 +162,7 @@ export default function HomeScreen() {
           }}
         >
           {/* roamify Wordmark */}
-          <ThemedText
-            style={{
-              fontSize: 42,
-              lineHeight: 46,
-              fontFamily: "PlusJakartaSans_800ExtraBold",
-              fontWeight: "800",
-              letterSpacing: -1.8,
-              color: colors.textPrimary,
-            }}
-          >
-            roamify
-          </ThemedText>
+          <Wordmark size="md" />
 
           {/* User Avatar */}
           <PressableScale

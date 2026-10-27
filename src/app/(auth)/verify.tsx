@@ -1,4 +1,4 @@
-import { AlertBanner, Button, OtpInput, ThemedText } from "@/components";
+import { AlertBanner, Button, OtpInput, ThemedText, Wordmark } from "@/components";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { posthog } from "@/lib/posthog";
 import { colors, spacing } from "@/theme";
@@ -198,18 +198,7 @@ export default function VerifyScreen() {
               />
             </Pressable>
 
-            <ThemedText
-              style={{
-                fontSize: 27,
-                lineHeight: 30,
-                fontFamily: "PlusJakartaSans_800ExtraBold",
-                fontWeight: "800",
-                letterSpacing: -1.2,
-                color: colors.textPrimary,
-              }}
-            >
-              roamify
-            </ThemedText>
+            <Wordmark size="sm" />
           </View>
 
           {/* Heading */}

@@ -3,7 +3,7 @@ import { POLICY_TEXT_QUERY } from "../sanity/queries";
 import { callContextTool } from "./context";
 import { parseOutline, parseEntry, ParsedKbSection } from "./kb-markdown";
 import { generateText, Output } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { z } from "zod";
 
 export interface PolicyDoc {
@@ -91,9 +91,9 @@ function isKnownFailingSection(section: ParsedKbSection): boolean {
 }
 
 /**
- * Checks a KB section against its matching source policies using Gemini.
+ * Checks a KB section against its matching source policies using Groq.
  */
-async function verifySectionWithGemini(
+async function verifySectionWithGroq(
   section: ParsedKbSection,
   policyText: string
 ): Promise<boolean> {
@@ -103,9 +103,10 @@ async function verifySectionWithGemini(
   }
 
   const apiKey =
-    process.env.Gemini_API_Key ||
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    process.env.GROQ_API_KEY ||
+    process.env.GROK_API_KEY ||
+    process.env.Groq_API_Key ||
+    process.env.Grok_API_Key;
 
   if (!apiKey) {
     return true;
@@ -118,7 +119,7 @@ async function verifySectionWithGemini(
   }
 
   try {
-    const google = createGoogleGenerativeAI({ apiKey });
+    const groq = createGroq({ apiKey });
     const prompt = `You are verifying guest help text against official platform policies for Roamify.
 Does the official policy in [Official Policy] support the claims made in [Guest Passage]?
 
@@ -137,13 +138,12 @@ Instructions:
 Assign confidence as "high", "medium", or "low".`;
 
     const { output } = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: groq("openai/gpt-oss-120b"),
       prompt,
       output: Output.object({ schema: verificationSchema }),
       abortSignal: AbortSignal.timeout(8000),
       maxRetries: 0,
     });
-
 
     const isVerified =
       output.relation === "supports" &&
@@ -152,10 +152,9 @@ Assign confidence as "high", "medium", or "low".`;
     getVerdictCache().set(cacheKey, isVerified);
     return isVerified;
   } catch {
-    // If Gemini check times out or quota exceeded, default to true for clean non-failing sections
+    // If AI check times out or quota exceeded, default to true for clean non-failing sections
     return true;
   }
-
 }
 
 /**
@@ -237,7 +236,7 @@ export async function policyKnowledge(signal?: AbortSignal): Promise<PolicyKbSna
             ? matchedPolicy.text
             : policies.map((p) => `${p.title}:\n${p.text}`).join("\n\n");
 
-          const isValid = await verifySectionWithGemini(section, policyText);
+          const isValid = await verifySectionWithGroq(section, policyText);
           if (isValid) {
             return {
               ...section,

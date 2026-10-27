@@ -79,12 +79,22 @@ export function BrandWordmark({
   );
 }
 
-export function Wordmark({ color = "#0B0B1A", fontSize = 32 }: { color?: string; fontSize?: number }) {
+export function Wordmark({
+  size = "md",
+  variant = "image",
+  color = "#0B0B1A",
+  fontSize,
+  style,
+  className,
+}: BrandWordmarkProps = {}) {
   return (
     <BrandWordmark
-      variant="text"
+      size={size}
+      variant={variant}
       color={color}
       fontSize={fontSize}
+      style={style}
+      className={className}
     />
   );
 }

@@ -1,5 +1,5 @@
 import { generateText, Output } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { z } from "zod";
 
 
@@ -137,7 +137,7 @@ export async function readIntent(
   // 2. Extract candidate numbers in code
   const numberCandidates = extractNumberCandidates(remaining);
 
-  // If Gemini quota was recently exceeded, skip network call and use code parser immediately
+  // If AI rate limit / quota was recently exceeded, skip network call and use code parser immediately
   if (Date.now() < quotaExceededCooldownUntil) {
     const parsed = parseQuery(trimmed);
     if (place) parsed.place = place;
@@ -145,19 +145,19 @@ export async function readIntent(
   }
 
   const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-    process.env.GEMINI_API_KEY ||
-    process.env.Gemini_API_Key ||
-    process.env.GOOGLE_API_KEY;
+    process.env.GROQ_API_KEY ||
+    process.env.GROK_API_KEY ||
+    process.env.Groq_API_Key ||
+    process.env.Grok_API_Key;
 
   if (!apiKey) {
-    console.warn("Gemini API key is not configured, using deterministic parser fallback");
+    console.warn("Groq / AI API key is not configured, using deterministic parser fallback");
     const parsed = parseQuery(trimmed);
     if (place) parsed.place = place;
     return intentFromParsed(parsed);
   }
 
-  const google = createGoogleGenerativeAI({ apiKey });
+  const groq = createGroq({ apiKey });
 
   try {
     const prompt = `You are the decision engine for Roamify, an upscale travel stay discovery platform.
@@ -196,12 +196,12 @@ Instructions:
    - Assign confidence: "high", "medium", or "low".`;
 
     const { output: object } = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: groq("openai/gpt-oss-120b"),
       output: Output.object({ schema: evaluationSchema }),
       prompt,
       temperature: 0.1,
       maxRetries: 0,
-      abortSignal: AbortSignal.timeout(3500),
+      abortSignal: AbortSignal.timeout(4000),
     });
 
 
@@ -321,11 +321,11 @@ Instructions:
     return intent;
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    if (errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED")) {
-      console.warn("Gemini quota exceeded, setting 60s cooldown and falling back to code parser");
+    if (errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("rate_limit")) {
+      console.warn("Groq / AI rate limit exceeded, setting 60s cooldown and falling back to code parser");
       quotaExceededCooldownUntil = Date.now() + 60_000;
     } else {
-      console.warn("Gemini structured decision failed, falling back to code parser:", errMsg);
+      console.warn("Groq / AI structured decision failed, falling back to code parser:", errMsg);
     }
     const parsed = parseQuery(trimmed);
     if (place) parsed.place = place;

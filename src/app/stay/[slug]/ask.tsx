@@ -300,7 +300,7 @@ export default function AskScreen() {
               overflow: "hidden",
               borderWidth: 1.5,
               borderColor: "#E5E7EB",
-              backgroundColor: "#FFFFFF",
+              backgroundColor: "#0B0C13",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 1 },
               shadowOpacity: 0.05,

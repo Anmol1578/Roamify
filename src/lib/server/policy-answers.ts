@@ -3,7 +3,7 @@ import { houseRuleParts, houseRuleLines } from "../stay-details";
 import { AnswerCard, matchTopics, answerFor } from "../ask";
 import { PolicyKbSnapshot, VerifiedKbSection } from "./policy-kb";
 import { generateText, Output } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { z } from "zod";
 
 interface CandidatePassage {
@@ -26,7 +26,7 @@ const answerSelectionSchema = z.object({
 export interface AnswerResult {
   cards: AnswerCard[];
   topics: string[];
-  answeredBy: "gemini" | "fallback";
+  answeredBy: "groq" | "fallback";
 }
 
 /**
@@ -241,7 +241,7 @@ function buildCardsFromPicks(
 }
 
 /**
- * Answers a guest question by evaluating against stay facts and verified KB sections using Gemini.
+ * Answers a guest question by evaluating against stay facts and verified KB sections using Groq.
  */
 export async function answerQuestion(
   question: string,
@@ -251,16 +251,17 @@ export async function answerQuestion(
 ): Promise<AnswerResult> {
   const trimmed = question.trim();
   const apiKey =
-    process.env.Gemini_API_Key ||
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    process.env.GROQ_API_KEY ||
+    process.env.GROK_API_KEY ||
+    process.env.Groq_API_Key ||
+    process.env.Grok_API_Key;
 
   const candidates = buildCandidates(stay, snapshot);
   const candidateMap = new Map<string, CandidatePassage>();
   candidates.forEach((c) => candidateMap.set(c.id, c));
 
   if (!apiKey) {
-    console.warn("Gemini API key is not configured, using deterministic keyword fallback");
+    console.warn("Groq / AI API key is not configured, using deterministic keyword fallback");
     const matched = matchTopics(trimmed);
     const fallbackCards = answerFor(stay, matched);
     return {
@@ -271,7 +272,7 @@ export async function answerQuestion(
   }
 
   try {
-    const google = createGoogleGenerativeAI({ apiKey });
+    const groq = createGroq({ apiKey });
 
     const prompt = `You are the policy knowledge engine for Roamify.
 A guest looking at the stay "${stay.title}" asked: "${trimmed}".
@@ -293,14 +294,12 @@ Instructions:
 - If no passage answers the question, return an empty pickedIds list.`;
 
     const { output } = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: groq("openai/gpt-oss-120b"),
       prompt,
       output: Output.object({ schema: answerSelectionSchema }),
       abortSignal: signal || AbortSignal.timeout(10000),
       maxRetries: 0,
     });
-
-
 
     if (output.confidence === "low" || output.pickedIds.length === 0) {
       // If low confidence, try deterministic keyword matching
@@ -325,7 +324,7 @@ Instructions:
           },
         ],
         topics: ["none"],
-        answeredBy: "gemini",
+        answeredBy: "groq",
       };
     }
 
@@ -333,10 +332,10 @@ Instructions:
     return {
       cards,
       topics: output.pickedIds,
-      answeredBy: "gemini",
+      answeredBy: "groq",
     };
   } catch (err) {
-    console.warn("Gemini answerQuestion failed, falling back to local matching:", err);
+    console.warn("Groq answerQuestion failed, falling back to local matching:", err);
     const matched = matchTopics(trimmed);
     const fallbackCards = answerFor(stay, matched);
     return {

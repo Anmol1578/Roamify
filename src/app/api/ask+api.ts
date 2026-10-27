@@ -38,7 +38,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: "Stay not found", code: "STAY_NOT_FOUND" }, { status: 404 });
     }
 
-    // 4. Answer question using Gemini passage picker over verified KB snapshot
+    // 4. Answer question using Groq passage picker over verified KB snapshot
     const answerResult = await answerQuestion(question, stay, snapshot);
 
     const durationMs = Date.now() - start;

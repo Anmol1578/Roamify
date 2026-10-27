@@ -24,6 +24,7 @@ import {
   User as UserIcon,
 } from "lucide-react-native";
 import { ThemedText } from "@/components/themed-text";
+import { Wordmark } from "@/components/brand-wordmark";
 import { PressableScale } from "@/components/ui/pressable-scale";
 import { posthog } from "@/lib/posthog";
 import { colors, radius, spacing } from "@/theme";
@@ -169,18 +170,7 @@ export default function ProfileScreen() {
             marginBottom: 20,
           }}
         >
-          <ThemedText
-            style={{
-              fontSize: 36,
-              lineHeight: 40,
-              fontFamily: "PlusJakartaSans_800ExtraBold",
-              fontWeight: "800",
-              letterSpacing: -1.6,
-              color: colors.textPrimary,
-            }}
-          >
-            roamify
-          </ThemedText>
+          <Wordmark size="md" />
 
           {/* Settings Button */}
           <PressableScale

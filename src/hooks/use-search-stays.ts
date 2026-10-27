@@ -4,6 +4,7 @@ import { Property } from "@/lib/stays";
 import { SearchIntent, emptyIntent } from "@/lib/search/intent";
 import { SortOption } from "@/lib/search/query";
 import { posthog } from "@/lib/posthog";
+import { getApiUrl } from "@/lib/api";
 
 export type SearchRequest = { q: string } | { intent: SearchIntent };
 
@@ -122,7 +123,7 @@ export function useSearchStays(
             sort: sortOption,
           };
 
-          const res = await fetch("/api/search", {
+          const res = await fetch(getApiUrl("/api/search"), {
             method: "POST",
             headers,
             body: JSON.stringify(bodyPayload),
@@ -208,7 +209,7 @@ export function useSearchStays(
         sort: sortOption,
       };
 
-      const res = await fetch("/api/search", {
+      const res = await fetch(getApiUrl("/api/search"), {
         method: "POST",
         headers,
         body: JSON.stringify(bodyPayload),
@@ -257,7 +258,7 @@ export function useSearchStays(
         sort: sortOption,
       };
 
-      const res = await fetch("/api/search", {
+      const res = await fetch(getApiUrl("/api/search"), {
         method: "POST",
         headers,
         body: JSON.stringify(bodyPayload),

@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>From first launch to the right stay.</strong><br>
-  Intelligent stay discovery app built with Expo, React Native, Sanity Content Lake, Clerk, and Google Gemini AI.
+  Intelligent stay discovery app built with Expo, React Native, Sanity Content Lake, Clerk, and Groq AI.
 </p>
 
 <p align="center">
@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/React_Native-0.88-61DAFB?style=flat-square&logo=react" alt="React Native" />
   <img src="https://img.shields.io/badge/Clerk-Auth-6C47FF?style=flat-square&logo=clerk" alt="Clerk" />
   <img src="https://img.shields.io/badge/Sanity-Content_Lake-F03E2F?style=flat-square&logo=sanity" alt="Sanity" />
-  <img src="https://img.shields.io/badge/Google-Gemini_2.5_Flash-4285F4?style=flat-square&logo=google" alt="Google Gemini" />
+  <img src="https://img.shields.io/badge/Groq-gpt--oss--120b-F55036?style=flat-square" alt="Groq AI" />
   <img src="https://img.shields.io/badge/NativeWind-v5-38BDF8?style=flat-square&logo=tailwindcss" alt="NativeWind" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript" alt="TypeScript" />
 </p>
@@ -55,7 +55,7 @@ Roamify bridges natural conversational search with exact constraint filtering. S
 ## ✨ Core Highlights
 
 - **🔍 Natural Language Stay Search**  
-  Describe your stay in plain words. Server-side structured extraction (powered by Google Gemini 2.5 Flash via Vercel AI SDK) converts queries into typed constraints and GROQ filters with strict confidence scoring (`low`, `medium`, `high`).
+  Describe your stay in plain words. Server-side structured extraction (powered by Groq openai/gpt-oss-120b via AI SDK) converts queries into typed constraints and GROQ filters with strict confidence scoring (`low`, `medium`, `high`).
 - **💬 Zero-Hallucination Policy Q&A**  
   Policy and house rule questions route through Sanity's Knowledge Base. Answers display the stay's verified facts and official policy passages word-for-word with explicit citations—no LLM makes up rules or fees.
 - **🏡 30 Curated Stays & 10 Verified Hosts**  
@@ -77,7 +77,7 @@ Roamify bridges natural conversational search with exact constraint filtering. S
 | **Styling & Design** | [NativeWind v5](https://www.nativewind.dev/), [Tailwind CSS v4](https://tailwindcss.com/), `react-native-css`, Plus Jakarta Sans |
 | **Authentication** | [Clerk](https://clerk.com/) (`@clerk/expo`, `@clerk/backend`) |
 | **CMS & Knowledge Base** | [Sanity Studio v6](https://www.sanity.io/) (Content Lake, GROQ, Knowledge Base Mode) |
-| **AI Engine** | [Google Gemini 2.5 Flash](https://ai.google.dev/) via [Vercel AI SDK](https://sdk.vercel.ai/) (`generateObject` + Zod schemas) |
+| **AI Engine** | [Groq](https://groq.com/) (`openai/gpt-oss-120b`) via [AI SDK](https://sdk.vercel.ai/) (`generateText` + Zod schemas) |
 | **Motion & Haptics** | React Native Reanimated 4, Gesture Handler, Expo Haptics |
 | **Analytics** | [PostHog](https://posthog.com/) (`posthog-react-native`) |
 
@@ -132,7 +132,7 @@ cp .env.example .env
 | `CLERK_SECRET_KEY` | Clerk Secret Key (Server API verification) |
 | `EXPO_PUBLIC_SANITY_PROJECT_ID` | Sanity Project ID |
 | `EXPO_PUBLIC_SANITY_DATASET` | Sanity Dataset name (`production`) |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Google Gemini API Key for search intent & Q&A |
+| `GROQ_API_KEY` | Groq API Key for search intent & Q&A |
 | `SANITY_ORGANIZATION_TOKEN` | Sanity Org Token for Knowledge Base endpoints |
 | `EXPO_PUBLIC_POSTHOG_KEY` | PostHog Token (Optional) |
 | `EXPO_PUBLIC_POSTHOG_HOST` | PostHog Ingestion Host (Optional) |

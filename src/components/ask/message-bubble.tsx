@@ -32,7 +32,7 @@ export function MessageBubble({ from, text }: MessageBubbleProps) {
             height: 32,
             borderRadius: 16,
             overflow: "hidden",
-            backgroundColor: "#FFFFFF",
+            backgroundColor: "#0B0C13",
             borderWidth: 1,
             borderColor: "#E5E7EB",
             shadowColor: "#000",

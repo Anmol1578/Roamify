@@ -5,6 +5,7 @@ import {
   GoogleIcon,
   Input,
   ThemedText,
+  Wordmark,
 } from "@/components";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { posthog } from "@/lib/posthog";
@@ -220,18 +221,7 @@ export default function SignInScreen() {
               />
             </Pressable>
 
-            <ThemedText
-              style={{
-                fontSize: 27,
-                lineHeight: 30,
-                fontFamily: "PlusJakartaSans_800ExtraBold",
-                fontWeight: "800",
-                letterSpacing: -1.2,
-                color: colors.textPrimary,
-              }}
-            >
-              roamify
-            </ThemedText>
+            <Wordmark size="sm" />
           </View>
 
           {/* Heading */}

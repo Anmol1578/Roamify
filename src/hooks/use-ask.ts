@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/expo";
 import { AnswerCard } from "@/lib/ask";
+import { getApiUrl } from "@/lib/api";
 
 export interface AskApiResponse {
   cards: AnswerCard[];
   topics: string[];
-  answeredBy: "gemini" | "fallback";
+  answeredBy: "groq" | "fallback";
 }
 
 const sessionCache = new Map<string, AskApiResponse>();
@@ -46,7 +47,7 @@ export function useAsk() {
           throw new Error("No active Clerk session token");
         }
 
-        const res = await fetch("/api/ask", {
+        const res = await fetch(getApiUrl("/api/ask"), {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
