@@ -7,6 +7,7 @@
     "@clerk/backend": "^3.26.2",
     "@clerk/expo": "^4.13.0",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
+    "@expo/server": "^0.7.5",
     "@expo/ui": "~58.0.23",
     "ai": "^7.0.153",
     "expo": "~58.0.19",
